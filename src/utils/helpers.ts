@@ -28,6 +28,15 @@ export const parseDateInput = (v: string) => {
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
 };
 
+export const formatDate = (date?: string | null) => {
+  if (!date) return '--/--/----';
+  if (date.includes('-')) {
+    const [y, m, d] = date.split('-');
+    if (y.length === 4) return `${d}/${m}/${y}`;
+  }
+  return date;
+};
+
 export const calcAge = (dateStr: string) => {
   if (!dateStr || String(dateStr).length < 10) return 0;
   const [d, m, y] = dateStr.split('/').map(Number);
@@ -106,7 +115,7 @@ export const checkSLA = (lead: Lead) => {
 
 export const checkFastTrack = (lead: Lead): string => {
   const isQualified = lead.nome && lead.celular && lead.profissao && (Number(lead.renda) || 0) > 0;
-  if (isQualified && (lead.status === 'Lead' || lead.status === 'Aguardando Informações')) return 'Planejamento';
+  if (isQualified && lead.status === 'Lead') return 'Planejamento';
   return lead.status;
 };
 
@@ -123,7 +132,14 @@ export const getSnippets = (lead: Lead) => {
     pendenciaDocs: `Olá ${cliente}, tudo bem? A seguradora solicitou um pequeno complemento na documentação para a emissão da sua apólice. Pode me enviar [DOCUMENTO_AQUI] quando tiver um tempinho?`,
     confirmacaoReuniao: `Olá ${cliente}, tudo bem? Passando só pra confirmar nossa reunião. Recomendo que separe uns 45 minutinhos num ambiente tranquilo para passarmos pelos cenários. Até lá!`,
     noShowRemarcacao: `Olá ${cliente}, tudo bem? Tentei te ligar para nossa call mas acho que rolou algum imprevisto. Como as condições que eu estruturei têm um prazo, qual o melhor horário pra gente reagendar?`,
-    ganho: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`
+    ganho: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
+    
+    // Novas mensagens profissionais de Follow-up
+    msg01: `${cliente}, tudo bem?\n\nAcabei de te enviar a proposta detalhada que conversamos. Estou à disposição para sanar quaisquer dúvidas que você ainda tenha ou fazer os ajustes que você julgar necessário, combinado?`,
+    msg02: `${cliente}, tudo bem?\n\nNotei que ainda não avançamos na nossa conversa e quero garantir que você tenha todas as informações para tomar a melhor decisão.\n\nPodemos marcar um horário para revisar juntos e ajustar o que for necessário ou, caso precise de mais tempo para pensar, é só me avisar para que eu saiba como seguir daqui em diante.\n\nO que me diz?`,
+    msg03: `${cliente}, sei que essa decisão é importante e merece reflexão.\n\nSe precisar de mais alguma informação ou quiser conversar novamente para ter certeza de que está fazendo a melhor escolha, conte comigo!\n\nCaso prefira deixar para outro momento, está tudo certo também. Apenas me fale para que eu possa te acompanhar da melhor forma possível.\n\nComo gostaria de seguir?`,
+    msg04: `${cliente}, tudo certo?\n\nComo você não me deu meu retorno, estou partindo do princípio que, por agora, o seguro não é prioridade pra você. E está tudo bem!\n\nVou dar baixa aqui no seu nome para não ficar te incomodando, mas espero que a gente se encontre numa próxima oportunidade.\n\nGrande abraço!`,
+    msg05: `${cliente}, tudo certo? Imagino que você esteja focado em outras prioridades no momento.\n\nComo não tive nenhum retorno até aqui, devo entender o silêncio como um "não é minha prioridade por enquanto" e considerar nosso papo encerrado? Se for o caso, sem problemas. Eu tiro o seu nome aqui da minha lista de acompanhamento.\n\nSe for só correria, me chama aqui...`
   };
 };
 
@@ -137,9 +153,6 @@ export const getCadenceFlow = (lead: Lead) => {
   const flows: Record<string, any[]> = {
     'Lead': [
       { day: 0, title: 'Formulário Inicial', action: 'Acionar Consultor', msg: snippets.formLead },
-    ],
-    'Aguardando Informações': [
-      { day: 0, title: 'Dados Incompletos', action: 'Cobrar Consultor', msg: snippets.cobrancaInfos },
     ],
     'Planejamento': [
       { day: 0, title: 'Aguardando Reunião', action: 'Cobrar Agendamento', msg: snippets.cobrarPlanejamento },

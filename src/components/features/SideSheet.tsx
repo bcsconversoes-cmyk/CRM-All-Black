@@ -117,9 +117,9 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
 
     const getAcoesPossiveis = () => {
         switch (lead.status) {
-            case 'Aguardando Informações': return ['Follow-up consultor', 'Consultor não responde'];
-            case 'Planejamento': return ['Agendar', 'Agendado', 'Pronto'];
+            case 'Planejamento': return ['Aguardando informações', 'Agendar', 'Agendado', 'Pronto'];
             case 'Fechamento': return ['Agendar', 'Agendado', 'No show'];
+            case 'Follow-up': return ['Enviar Proposta (Cliente)', 'Acompanhamento 1 (Cliente)', 'Acompanhamento 2 (Cliente)', 'Prioridade Atual (Cliente)', 'Encerrar Contato (Cliente)', 'Agendado'];
             case 'Pendência': return ['Aguardando documentação', 'Documentação Enviada', 'Em Análise'];
             default: return [];
         }
@@ -127,10 +127,19 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
     const acoesDisponiveis = getAcoesPossiveis();
 
     const handleSmartContactWA = () => {
-        const isContatoCliente = ['Pendência', 'Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
+        const isContatoCliente = ['Follow-up', 'Pendência', 'Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
 
         if (isContatoCliente) {
-            const msg = lead.status === 'Ganho' ? getSnippets(lead).ganho : `Olá, tudo bem?`;
+            const snippets = getSnippets(lead);
+            let msg = `Olá, tudo bem?`;
+            
+            if (lead.status === 'Ganho') msg = snippets.ganho;
+            else if (lead.acao === 'Enviar Proposta (Cliente)') msg = snippets.msg01;
+            else if (lead.acao === 'Acompanhamento 1 (Cliente)') msg = snippets.msg02;
+            else if (lead.acao === 'Acompanhamento 2 (Cliente)') msg = snippets.msg03;
+            else if (lead.acao === 'Prioridade Atual (Cliente)') msg = snippets.msg04;
+            else if (lead.acao === 'Encerrar Contato (Cliente)') msg = snippets.msg05;
+            
             window.open(getWhatsAppLink(lead.celular || '', msg), '_blank');
         } else {
             if (!selectedConsultor || !selectedConsultor.whatsapp) {

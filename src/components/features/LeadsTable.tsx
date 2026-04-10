@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Check, Shield, MessageCircle, X, Send, AlertTriangle, Search, Filter } from 'lucide-react';
 import { Lead, STAGES, STAGE_SLAS } from '../../types';
-import { formatMoney, getSnippets, getWhatsAppLink, getDaysInStage } from '../../utils/helpers';
+import { formatMoney, getSnippets, getWhatsAppLink, getDaysInStage, formatDate } from '../../utils/helpers';
 import StatusBadge from '../ui/StatusBadge';
 
 const SalesforceIcon = ({ className = 'w-4 h-4', color = '#00A1E0' }: { className?: string; color?: string }) => (
@@ -39,7 +39,6 @@ const glassInput = {
 } as React.CSSProperties;
 
 export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, setSelectedLead, updateLeadStatus }: LeadsTableProps) {
-    // AQUI ESTÁ A MUDANÇA: Filtro padrão remove Ganho, Perdido e Cancelou
     const [filters, setFilters] = useState<any>({
         status: STAGES.filter(s => !['Ganho', 'Perdido', 'Cancelou'].includes(s)),
         nome: '',
@@ -120,7 +119,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
     };
 
     const SortIcon = ({ col }: { col: string }) => {
-        if (sortKey !== col) return <ChevronDown className="w-3 h-3 ml-1" style={{ color: '#334155' }} />;
+        if (sortKey !== col) return <ChevronDown className="w-3 h-3 ml-1" style={{ color: '#64748b' }} />;
         return sortDir === 'asc'
             ? <ChevronUp className="w-3 h-3 ml-1" style={{ color: '#60a5fa' }} />
             : <ChevronDown className="w-3 h-3 ml-1" style={{ color: '#60a5fa' }} />;
@@ -141,7 +140,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
 
     const thCls = "px-5 py-4 border-b text-left" as const;
     const thStyle = { borderColor: 'rgba(255,255,255,0.05)' };
-    const thLbl = { fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' as const, letterSpacing: '0.15em', color: '#64748b', cursor: 'pointer' };
+    const thLbl = { fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' as const, letterSpacing: '0.15em', color: '#cbd5e1', cursor: 'pointer' };
 
     useEffect(() => {
         const handleBodyClick = (e: MouseEvent) => {
@@ -185,7 +184,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                             </div>
                             <button onClick={() => setWaModalLead(null)}
                                 className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#64748b' }}>
+                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#94a3b8' }}>
                                 <X size={16} />
                             </button>
                         </div>
@@ -194,7 +193,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                             {Object.values(getSnippets(waModalLead)).map((tmpl, idx) => (
                                 <button key={idx} onClick={() => setWaMessage(tmpl)}
                                     className="text-[9px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-all"
-                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8' }}
+                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1' }}
                                     onMouseEnter={e => {
                                         (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.12)';
                                         (e.currentTarget as HTMLButtonElement).style.color = '#6ee7b7';
@@ -202,7 +201,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                     }}
                                     onMouseLeave={e => {
                                         (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
-                                        (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8';
+                                        (e.currentTarget as HTMLButtonElement).style.color = '#cbd5e1';
                                         (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)';
                                     }}>
                                     Opção {idx + 1}
@@ -212,7 +211,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
 
                         <textarea
                             className="w-full text-[13px] min-h-[140px] rounded-2xl resize-none outline-none p-5 leading-relaxed"
-                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1', fontFamily: 'inherit' }}
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontFamily: 'inherit' }}
                             value={waMessage}
                             onChange={e => setWaMessage(e.target.value)}
                             onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = 'rgba(16,185,129,0.35)'}
@@ -242,7 +241,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowStatusFilter(!showStatusFilter)}
                                                 className="p-1.5 rounded-lg transition-all"
-                                                style={{ background: filters.status.length > 0 ? 'rgba(37,99,235,0.15)' : 'transparent', color: filters.status.length > 0 ? '#60a5fa' : '#475569', border: '1px solid transparent' }}>
+                                                style={{ background: filters.status.length > 0 ? 'rgba(37,99,235,0.15)' : 'transparent', color: filters.status.length > 0 ? '#60a5fa' : '#94a3b8', border: '1px solid transparent' }}>
                                                 <Filter size={13} />
                                             </button>
                                             {showStatusFilter && (
@@ -259,7 +258,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                                                     style={{ background: isSel ? '#2563eb' : 'rgba(255,255,255,0.06)', border: isSel ? '1px solid #2563eb' : '1px solid rgba(255,255,255,0.12)' }}>
                                                                     {isSel && <Check className="w-2.5 h-2.5 text-white" />}
                                                                 </div>
-                                                                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isSel ? '#e2e8f0' : '#64748b' }}>{s}</span>
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isSel ? '#f1f5f9' : '#94a3b8' }}>{s}</span>
                                                             </div>
                                                         );
                                                     })}
@@ -284,7 +283,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowNameFilter(!showNameFilter)}
                                                 className="p-1.5 rounded-lg transition-all"
-                                                style={{ color: filters.nome ? '#60a5fa' : '#475569', background: filters.nome ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}>
+                                                style={{ color: filters.nome ? '#60a5fa' : '#94a3b8', background: filters.nome ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}>
                                                 <Search size={13} />
                                             </button>
                                             {showNameFilter && (
@@ -304,7 +303,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowConsultorFilter(!showConsultorFilter)}
                                                 className="p-1.5 rounded-lg"
-                                                style={{ color: filters.consultor ? '#60a5fa' : '#475569', background: filters.consultor ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}>
+                                                style={{ color: filters.consultor ? '#60a5fa' : '#94a3b8', background: filters.consultor ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}>
                                                 <Search size={13} />
                                             </button>
                                             {showConsultorFilter && (
@@ -321,19 +320,19 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowRendaFilter(!showRendaFilter)}
                                                 className="p-1.5 rounded-lg mr-1"
-                                                style={{ color: filters.renda ? '#60a5fa' : '#475569', background: filters.renda ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}>
+                                                style={{ color: filters.renda ? '#60a5fa' : '#94a3b8', background: filters.renda ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}>
                                                 <Filter size={13} />
                                             </button>
                                             {showRendaFilter && (
                                                 <div className="absolute top-full right-0 mt-2 z-[60] p-3 flex items-center gap-2" style={{ ...glassDropdown, width: 180 }}>
                                                     <select
-                                                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', outline: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', appearance: 'none', fontFamily: 'inherit' }}
+                                                        style={{ background: 'transparent', border: 'none', color: '#cbd5e1', outline: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer', appearance: 'none', fontFamily: 'inherit' }}
                                                         value={rendaOp} onChange={e => { setRendaOp(e.target.value); setFilters({ ...filters, renda: `${e.target.value}${rendaVal}` }); }}>
                                                         <option value="=">=</option><option value=">">{'>'}</option><option value="<">{'<'}</option><option value=">=">{'>='}</option><option value="<=">{'<='}</option>
                                                     </select>
                                                     <div className="w-px h-4" style={{ background: 'rgba(255,255,255,0.10)' }} />
                                                     <input autoFocus
-                                                        style={{ background: 'transparent', border: 'none', color: '#e2e8f0', outline: 'none', fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-mono)', width: '100%' }}
+                                                        style={{ background: 'transparent', border: 'none', color: '#f8fafc', outline: 'none', fontSize: '11px', fontWeight: 700, fontFamily: 'var(--font-mono)', width: '100%' }}
                                                         placeholder="5000" value={rendaVal}
                                                         onChange={e => { const c = e.target.value.replace(/\D/g, ''); setRendaVal(c); setFilters({ ...filters, renda: `${rendaOp}${c}` }); }} />
                                                 </div>
@@ -366,7 +365,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                         <tbody>
                             {filteredLeads.map(lead => {
                                 const days = getDaysInStage(lead);
-                                const limit = STAGE_SLAS[lead.status] || 0; // Atualizado para STAGE_SLAS
+                                const limit = STAGE_SLAS[lead.status] || 0;
                                 const isBreached = limit > 0 && days > limit && !['Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
 
                                 return (
@@ -386,7 +385,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                                     <div className="absolute top-full left-0 mt-2 w-52 z-[70] p-2 animate-in" style={glassDropdown}
                                                         onMouseLeave={() => setEditingStatusLeadId(null)}
                                                         onClick={e => e.stopPropagation()}>
-                                                        <p className="text-[9px] font-black uppercase tracking-widest px-3 py-2 border-b mb-1" style={{ color: '#475569', borderColor: 'rgba(255,255,255,0.06)' }}>Mudar Status</p>
+                                                        <p className="text-[9px] font-black uppercase tracking-widest px-3 py-2 border-b mb-1" style={{ color: '#94a3b8', borderColor: 'rgba(255,255,255,0.06)' }}>Mudar Status</p>
                                                         <div className="max-h-60 overflow-y-auto custom-scrollbar">
                                                             {STAGES.map(s => {
                                                                 const isCurrent = lead.status === s;
@@ -396,7 +395,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                                                         style={{ background: isCurrent ? 'rgba(37,99,235,0.10)' : 'transparent' }}
                                                                         onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'}
                                                                         onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = isCurrent ? 'rgba(37,99,235,0.10)' : 'transparent'}>
-                                                                        <span className="text-[10px] font-bold uppercase tracking-wider flex-1" style={{ color: isCurrent ? '#e2e8f0' : '#64748b' }}>{s}</span>
+                                                                        <span className="text-[10px] font-bold uppercase tracking-wider flex-1" style={{ color: isCurrent ? '#f1f5f9' : '#94a3b8' }}>{s}</span>
                                                                         {isCurrent && <Check className="w-3.5 h-3.5" style={{ color: '#10b981' }} />}
                                                                     </button>
                                                                 );
@@ -411,25 +410,29 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                                                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                                                    <span className="text-[11px] font-black" style={{ color: '#64748b' }}>
+                                                    <span className="text-[11px] font-black" style={{ color: '#cbd5e1' }}>
                                                         {(lead.nome || 'CL').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                                     </span>
                                                 </div>
                                                 <div className="flex flex-col max-w-[200px]">
-                                                    <span className="text-[12px] font-bold text-slate-300 group-hover:text-white transition-colors truncate">{lead.nome || 'Sem Nome'}</span>
-                                                    <span className="text-[10px] truncate mt-0.5" style={{ color: '#475569' }}>{lead.profissao || 'Sem profissão'}</span>
+                                                    <span className="text-[12px] font-bold text-slate-100 group-hover:text-white transition-colors truncate">{lead.nome || 'Sem Nome'}</span>
+                                                    <span className="text-[10px] truncate mt-0.5" style={{ color: '#94a3b8' }}>{lead.profissao || 'Sem profissão'}</span>
                                                 </div>
                                             </div>
                                         </td>
 
                                         <td className="px-5 py-4 hidden lg:table-cell">
-                                            <span className="text-[12px] font-medium group-hover:text-blue-300 transition-colors" style={{ color: '#64748b' }}>
+                                            <span 
+                                                onClick={(e) => { e.stopPropagation(); setFilters({ ...filters, consultor: lead.consultor || '' }); }}
+                                                className="text-[12px] font-medium group-hover:text-cyan-300 transition-colors hover:underline decoration-cyan-500/30 underline-offset-4 cursor-pointer" 
+                                                style={{ color: '#94a3b8' }}
+                                            >
                                                 {lead.consultor || '--'}
                                             </span>
                                         </td>
 
                                         <td className="px-5 py-4 text-right hidden md:table-cell">
-                                            <span className="text-[13px] font-black font-mono" style={{ color: '#cbd5e1' }}>
+                                            <span className="text-[13px] font-black font-mono" style={{ color: '#94a3b8' }}>
                                                 {formatMoney(lead.renda)}
                                             </span>
                                         </td>
@@ -441,12 +444,12 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                                         ? { background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.22)', boxShadow: '0 0 10px rgba(244,63,94,0.12)' }
                                                         : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
                                                     }>
-                                                    <span className="text-[12px] font-black font-mono" style={{ color: isBreached ? '#fda4af' : '#94a3b8' }}>
+                                                    <span className="text-[12px] font-black font-mono" style={{ color: isBreached ? '#fda4af' : '#cbd5e1' }}>
                                                         {days !== null && days !== undefined && !isNaN(Number(days)) ? `${days}d` : '-'}
                                                     </span>
                                                     {isBreached && <AlertTriangle size={11} strokeWidth={2.5} className="animate-pulse" style={{ color: '#fda4af' }} />}
                                                 </div>
-                                                <span className="text-[8px] uppercase tracking-widest mt-1" style={{ color: '#334155' }}>Limite: {limit || 'N/A'}{limit > 0 ? 'd' : ''}</span>
+                                                <span className="text-[8px] uppercase tracking-widest mt-1" style={{ color: '#64748b' }}>Limite: {limit || 'N/A'}{limit > 0 ? 'd' : ''}</span>
                                             </div>
                                         </td>
 
@@ -454,14 +457,14 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                             {lead.acao ? (
                                                 <div className="flex flex-col items-center gap-1">
                                                     <button onClick={e => { e.stopPropagation(); setSelectedLead(lead); }}
-                                                        className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all"
-                                                        style={{ background: 'rgba(37,99,235,0.10)', border: '1px solid rgba(37,99,235,0.20)', color: '#93c5fd' }}>
+                                                        className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-lg transition-all"
+                                                        style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)', color: '#bfdbfe' }}>
                                                         {lead.acao}
                                                     </button>
-                                                    {lead.dataAcao && <span className="text-[9px] font-mono" style={{ color: '#475569' }}>{lead.dataAcao}</span>}
+                                                    {lead.dataAcao && <span className="text-[9px] font-black font-mono" style={{ color: '#f8fafc' }}>{formatDate(lead.dataAcao)}</span>}
                                                 </div>
                                             ) : (
-                                                <span style={{ color: '#1e293b', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>--</span>
+                                                <span className="text-[11px] font-mono" style={{ color: '#475569' }}>--</span>
                                             )}
                                         </td>
 
@@ -470,7 +473,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                                 {lead.salesforceUrl
                                                     ? <a href={lead.salesforceUrl} target="_blank" rel="noopener noreferrer"
                                                         className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                                                        style={{ background: 'rgba(0,161,224,0.10)', border: '1px solid rgba(0,161,224,0.22)' }}
+                                                        style={{ background: 'rgba(0,161,224,0.12)', border: '1px solid rgba(0,161,224,0.25)' }}
                                                         onClick={e => e.stopPropagation()} title="Salesforce">
                                                         <SalesforceIcon className="w-3.5 h-3.5" />
                                                     </a>
@@ -482,20 +485,20 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
 
                                                 {lead.possuiSeguro
                                                     ? <button className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                                                        style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)', boxShadow: '0 0 12px rgba(139,92,246,0.12)' }}
+                                                        style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', boxShadow: '0 0 12px rgba(139,92,246,0.12)' }}
                                                         title={`Seguradora: ${lead.seguradora || 'N/A'}`}
                                                         onClick={e => { e.stopPropagation(); setSelectedLead(lead); }}>
-                                                        <Shield className="w-3.5 h-3.5" style={{ color: '#c4b5fd' }} />
+                                                        <Shield className="w-3.5 h-3.5" style={{ color: '#ddd6fe' }} />
                                                     </button>
                                                     : <div className="w-8 h-8 rounded-xl flex items-center justify-center opacity-20 cursor-not-allowed"
                                                         style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                        <Shield className="w-3.5 h-3.5" style={{ color: '#334155' }} />
+                                                        <Shield className="w-3.5 h-3.5" style={{ color: '#475569' }} />
                                                     </div>
                                                 }
 
                                                 <button onClick={e => openWaModal(lead, e)}
                                                     className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                                                    style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.22)', boxShadow: '0 0 12px rgba(16,185,129,0.10)' }}
+                                                    style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', boxShadow: '0 0 12px rgba(16,185,129,0.10)' }}
                                                     title="WhatsApp">
                                                     <MessageCircle className="w-3.5 h-3.5" style={{ color: '#6ee7b7' }} />
                                                 </button>
@@ -510,9 +513,9 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                     <td colSpan={7} className="p-20 text-center">
                                         <div className="flex flex-col items-center justify-center gap-4">
                                             <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                                                <Search className="w-5 h-5" style={{ color: '#334155' }} />
+                                                <Search className="w-5 h-5" style={{ color: '#475569' }} />
                                             </div>
-                                            <span className="text-[12px] font-medium" style={{ color: '#475569' }}>Nenhum cliente encontrado.</span>
+                                            <span className="text-[12px] font-medium" style={{ color: '#cbd5e1' }}>Nenhum cliente encontrado.</span>
                                         </div>
                                     </td>
                                 </tr>

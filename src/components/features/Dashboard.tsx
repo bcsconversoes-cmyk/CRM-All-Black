@@ -1,11 +1,10 @@
 import React, { useMemo } from 'react';
-import { Users, Calendar, AlertCircle, PlayCircle, MessageCircle, CalendarX, TrendingDown, Trophy, ArrowRight, Activity, Filter, Zap, Target } from 'lucide-react';
+import { Users, Calendar, AlertCircle, PlayCircle, MessageCircle, CalendarX, TrendingDown, Trophy, ArrowRight, Activity, Filter, Zap, Target, Check } from 'lucide-react';
 import { Lead } from '../../types';
-import { calcAge, checkSLA, getCadenceFlow, getWhatsAppLink } from '../../utils/helpers';
+import { calcAge, checkSLA, getCadenceFlow, getWhatsAppLink, formatDate } from '../../utils/helpers';
 
 const CONFIG_ETAPAS = [
     { id: 'Lead', label: 'Leads', accent: 'rgba(99,102,241,', border: 'rgba(99,102,241,0.25)', text: '#a5b4fc' },
-    { id: 'Aguardando Informações', label: 'Infos', accent: 'rgba(245,158,11,', border: 'rgba(245,158,11,0.25)', text: '#fcd34d' },
     { id: 'Planejamento', label: 'Planejamento', accent: 'rgba(37,99,235,', border: 'rgba(37,99,235,0.25)', text: '#93c5fd' },
     { id: 'Fechamento', label: 'Fechamento', accent: 'rgba(59,130,246,', border: 'rgba(59,130,246,0.25)', text: '#60a5fa' },
     { id: 'Follow-up', label: 'Follow-up', accent: 'rgba(34,211,238,', border: 'rgba(34,211,238,0.25)', text: '#67e8f9' },
@@ -14,7 +13,7 @@ const CONFIG_ETAPAS = [
 ];
 
 export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { leads: Lead[], openLead: (l: Lead) => void }) {
-    const { leadsAtivos, leadsTotal, pipelineForecast, taxaNoShow, leadsCadencia, slaBreached, topMotivosPerda, topConsultores, winRate } = useMemo(() => {
+    const { leadsAtivos, leadsTotal, pipelineForecast, taxaNoShow, leadsCadencia, slaBreached, topMotivosPerda, topConsultores, winRate, leadsPlanejamentoPendente, leadsFollowUpConsultor, leadsFollowUpCliente } = useMemo(() => {
         const ativos = leads.filter(l => !['Ganho', 'Perdido', 'Cancelou'].includes(l.status));
         const ganhos = leads.filter(l => l.status === 'Ganho');
         const perdidos = leads.filter(l => l.status === 'Perdido' && l.motivoPerda);
@@ -55,8 +54,11 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
             leadsCadencia: cadencia,
             slaBreached: sla,
             topConsultores: Object.entries(ranking).sort((a, b) => b[1] - a[1]).slice(0, 5),
-            winRate: leads.length ? Math.round((ganhos.length / leads.length) * 100) : 0,
+            winRate: leads.length ? Math.round((ganhos.length / (leads.length || 1)) * 100) : 0,
+            topMotivosPerda: Object.entries(motivos).sort((a, b) => b[1] - a[1]).slice(0, 5),
             leadsPlanejamentoPendente: ativos.filter(l => l.status === 'Planejamento' && l.acao !== 'Pronto'),
+            leadsFollowUpConsultor: ativos.filter(l => l.status === 'Follow-up' && (l.acao?.includes('(Consultor)') || !l.acao)),
+            leadsFollowUpCliente: ativos.filter(l => l.status === 'Follow-up' && l.acao?.includes('(Cliente)')),
         };
     }, [leads]);
 
@@ -120,7 +122,7 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                     </div>
                     <span>Command Center</span>
                 </h2>
-                <p className="text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-12">Inteligência de Vendas · Saúde do Pipeline</p>
+                <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] ml-12">Inteligência de Vendas · Saúde do Pipeline</p>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -134,7 +136,7 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                             style={{ background: stat.glow, filter: 'blur(24px)' }} />
 
                         <div className="flex items-start justify-between relative z-10">
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">{stat.label}</p>
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">{stat.label}</p>
                             <div className="p-2 rounded-xl" style={{ background: stat.accent, border: `1px solid ${stat.border}` }}>
                                 <stat.icon size={15} style={{ color: stat.color }} strokeWidth={2.5} />
                             </div>
@@ -145,7 +147,7 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                                 {stat.value}
                             </p>
                             {stat.subtext && (
-                                <span className="text-[9px] font-bold text-slate-500 mt-1 block">{stat.subtext}</span>
+                                <span className="text-[9px] font-bold text-slate-400 mt-1 block">{stat.subtext}</span>
                             )}
                         </div>
                     </div>
@@ -162,7 +164,7 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                     </div>
                     <div>
                         <h3 className="text-[11px] font-black uppercase text-white tracking-[0.18em]">Pipeline Operacional</h3>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mt-0.5">Fluxo Contínuo de Conversão</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Fluxo Contínuo de Conversão</p>
                     </div>
                 </div>
 
@@ -206,17 +208,116 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="glass-card p-6 flex flex-col h-[420px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* 1. FOLLOW-UP CLIENTE */}
+                <div className="glass-card p-6 flex flex-col h-[450px]">
                     <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl" style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.20)', boxShadow: '0 0 12px rgba(37,99,235,0.15)' }}>
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)', boxShadow: '0 0 12px rgba(34,211,238,0.15)' }}>
+                                <MessageCircle size={14} style={{ color: '#67e8f9' }} />
+                            </div>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Follow-up Cliente</h3>
+                        </div>
+                        <span className="text-[9px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: 'rgba(34,211,238,0.10)', border: '1px solid rgba(34,211,238,0.20)', color: '#67e8f9' }}>
+                            {leadsFollowUpCliente.length}
+                        </span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                        {leadsFollowUpCliente.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-400">
+                                <Check size={20} className="opacity-20" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Contatos em dia</p>
+                            </div>
+                        ) : (
+                            leadsFollowUpCliente.map(l => {
+                                const cadence = getCadenceFlow(l);
+                                return (
+                                    <div
+                                        key={l.id}
+                                        onClick={() => openLead(l)}
+                                        className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group bg-white/[0.03] border border-white/[0.06] hover:bg-cyan-500/5 hover:border-cyan-500/20"
+                                    >
+                                        <div className="flex flex-col gap-1 flex-1 min-w-0">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors truncate">{l.nome}</p>
+                                                {l.dataAcao && <span className="text-[10px] font-mono font-medium text-slate-300 group-hover:text-cyan-400 transition-colors">{formatDate(l.dataAcao)}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {l.acao && (
+                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-white/[0.05] text-slate-400 border border-white/[0.08]">
+                                                        {l.acao}
+                                                    </span>
+                                                )}
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-cyan-400">
+                                                    {cadence.currentStep.action}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); window.open(getWhatsAppLink(l.celular || '', cadence.currentStep.msg), '_blank'); }}
+                                            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ml-3 transition-all hover:scale-110 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                                        >
+                                            <MessageCircle size={15} />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+
+                {/* 2. FOLLOW-UP CONSULTOR */}
+                <div className="glass-card p-6 flex flex-col h-[450px]">
+                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.20)', boxShadow: '0 0 12px rgba(245,158,11,0.15)' }}>
+                                <Activity size={14} style={{ color: '#fbbf24' }} />
+                            </div>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Follow-up Consultor</h3>
+                        </div>
+                        <span className="text-[9px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.20)', color: '#fbbf24' }}>
+                            {leadsFollowUpConsultor.length}
+                        </span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                        {leadsFollowUpConsultor.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-400">
+                                <Check size={20} className="opacity-20" />
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Time Alinhado</p>
+                            </div>
+                        ) : (
+                            leadsFollowUpConsultor.map(l => (
+                                <div
+                                    key={l.id}
+                                    onClick={() => openLead(l)}
+                                    className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group bg-white/[0.03] border border-white/[0.06] hover:bg-amber-500/10 hover:border-amber-500/30"
+                                >
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors truncate">{l.nome}</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-amber-500">Aguardando Retorno</p>
+                                    </div>
+                                    <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-100 transition-colors">{l.consultor || 'N/A'}</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* 3. TAREFAS HOJE */}
+                <div className="glass-card p-6 flex flex-col h-[450px]">
+                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(37,99,235,0.10)', border: '1px solid rgba(37,99,235,0.20)', boxShadow: '0 0 12px rgba(37,99,235,0.15)' }}>
                                 <PlayCircle size={14} style={{ color: '#60a5fa' }} />
                             </div>
                             <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Tarefas Hoje</h3>
                         </div>
                         <span className="text-[9px] font-black px-2.5 py-1 rounded-lg"
-                            style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.20)', color: '#93c5fd' }}>
+                            style={{ background: 'rgba(37,99,235,0.10)', border: '1px solid rgba(37,99,235,0.20)', color: '#60a5fa' }}>
                             {leadsCadencia.length} pendentes
                         </span>
                     </div>
@@ -224,53 +325,31 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
                         {leadsCadencia.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                                    style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}>
-                                    <Zap size={16} style={{ color: '#6ee7b7' }} />
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Missão Cumprida</p>
+                                <Activity size={20} className="text-blue-500/20" />
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tudo em dia</p>
                             </div>
                         ) : leadsCadencia.map(({ lead: l, cadence }) => (
                             <div
                                 key={l.id}
                                 onClick={() => openLead(l)}
-                                className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group"
-                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                                onMouseEnter={e => {
-                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(37,99,235,0.08)';
-                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(37,99,235,0.25)';
-                                }}
-                                onMouseLeave={e => {
-                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)';
-                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                                }}
+                                className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group bg-white/[0.03] border border-white/[0.06] hover:bg-blue-500/10 hover:border-blue-500/30"
                             >
                                 <div className="flex flex-col gap-1 flex-1 min-w-0">
                                     <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors truncate">{l.nome}</p>
                                     <div className="flex items-center gap-2">
                                         {l.acao && (
-                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded"
-                                                style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-white/[0.05] text-slate-400 border border-white/[0.08]">
                                                 {l.acao}
                                             </span>
                                         )}
-                                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#60a5fa' }}>
+                                        <span className="text-[9px] font-black uppercase tracking-wider text-blue-400">
                                             {cadence.currentStep.action}
                                         </span>
                                     </div>
                                 </div>
                                 <button
                                     onClick={e => { e.stopPropagation(); window.open(getWhatsAppLink(l.celular || '', cadence.currentStep.msg), '_blank'); }}
-                                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ml-3 transition-all hover:scale-110"
-                                    style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)', color: '#6ee7b7', boxShadow: '0 0 12px rgba(16,185,129,0.10)' }}
-                                    onMouseEnter={e => {
-                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.75)';
-                                        (e.currentTarget as HTMLButtonElement).style.color = '#022c22';
-                                    }}
-                                    onMouseLeave={e => {
-                                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.10)';
-                                        (e.currentTarget as HTMLButtonElement).style.color = '#6ee7b7';
-                                    }}
+                                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ml-3 transition-all hover:scale-110 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white"
                                 >
                                     <MessageCircle size={15} />
                                 </button>
@@ -279,71 +358,17 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                     </div>
                 </div>
 
-                <div className="glass-card p-6 flex flex-col h-[420px]">
+                {/* 4. PLANEJAMENTOS PENDENTES */}
+                <div className="glass-card p-6 flex flex-col h-[450px]">
                     <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl" style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.20)', boxShadow: '0 0 12px rgba(244,63,94,0.15)' }}>
-                                <AlertCircle size={14} style={{ color: '#fda4af' }} />
-                            </div>
-                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">SLA Atrasado</h3>
-                        </div>
-                        <span className="text-[9px] font-black px-2.5 py-1 rounded-lg"
-                            style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.20)', color: '#fda4af' }}>
-                            {slaBreached.length} alertas
-                        </span>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
-                        {slaBreached.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                                    style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}>
-                                    <Activity size={16} style={{ color: '#6ee7b7' }} />
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Fluxo Saudável</p>
-                            </div>
-                        ) : slaBreached.map(l => (
-                            <div
-                                key={l.id}
-                                onClick={() => openLead(l)}
-                                className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group"
-                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                                onMouseEnter={e => {
-                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(244,63,94,0.06)';
-                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(244,63,94,0.22)';
-                                }}
-                                onMouseLeave={e => {
-                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)';
-                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                                }}
-                            >
-                                <div>
-                                    <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors mb-1">{l.nome}</p>
-                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded"
-                                        style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                        {l.status}
-                                    </span>
-                                </div>
-                                <div className="px-3 py-1.5 rounded-lg" style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.20)' }}>
-                                    <span className="text-[11px] font-black font-mono" style={{ color: '#fda4af' }}>
-                                        +{checkSLA(l).days - checkSLA(l).maxDays}d
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="glass-card p-6 flex flex-col h-[420px]">
-                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl" style={{ background: 'rgba(37,180,235,0.10)', border: '1px solid rgba(37,180,235,0.20)', boxShadow: '0 0 12px rgba(37,180,235,0.15)' }}>
-                                <Target size={14} style={{ color: '#60a5fa' }} />
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.20)', boxShadow: '0 0 12px rgba(99,102,241,0.15)' }}>
+                                <Target size={14} style={{ color: '#818cf8' }} />
                             </div>
                             <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Planejamentos Pendentes</h3>
                         </div>
                         <span className="text-[9px] font-black px-2.5 py-1 rounded-lg"
-                            style={{ background: 'rgba(37,180,235,0.10)', border: '1px solid rgba(37,180,235,0.20)', color: '#93c5fd' }}>
+                            style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.20)', color: '#818cf8' }}>
                             {leadsPlanejamentoPendente.length} pendentes
                         </span>
                     </div>
@@ -351,72 +376,49 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                     <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
                         {leadsPlanejamentoPendente.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                                    style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}>
-                                    <Check size={16} style={{ color: '#6ee7b7' }} />
-                                </div>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tudo em dia</p>
+                                <Check size={20} className="text-emerald-500/20" />
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tudo em dia</p>
                             </div>
                         ) : leadsPlanejamentoPendente.map(l => (
                             <div
                                 key={l.id}
                                 onClick={() => openLead(l)}
-                                className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group"
-                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                                onMouseEnter={e => {
-                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(37,99,235,0.06)';
-                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(37,99,235,0.22)';
-                                }}
-                                onMouseLeave={e => {
-                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)';
-                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)';
-                                }}
+                                className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group bg-white/[0.03] border border-white/[0.06] hover:bg-indigo-500/10 hover:border-indigo-500/30"
                             >
-                                <div>
-                                    <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors mb-1">{l.nome}</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded"
-                                            style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                            {l.consultor || 'Sem Consultor'}
-                                        </span>
-                                    </div>
+                                <div className="flex flex-col gap-1">
+                                    <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors truncate">{l.nome}</p>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{l.consultor || 'Sem Consultor'}</span>
                                 </div>
-                                <div className="px-3 py-1.5 rounded-lg" style={{ background: 'rgba(37,99,235,0.10)', border: '1px solid rgba(37,99,235,0.20)' }}>
-                                    <ArrowRight size={14} style={{ color: '#60a5fa' }} />
-                                </div>
+                                <ArrowRight size={14} className="text-slate-600 group-hover:text-indigo-400" />
                             </div>
                         ))}
                     </div>
                 </div>
 
-                <div className="glass-card p-6">
+                {/* 5. TOP CLOSERS */}
+                <div className="glass-card p-6 flex flex-col h-[450px]">
                     <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.05]">
                         <div className="p-2 rounded-xl" style={{ background: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.20)', boxShadow: '0 0 12px rgba(245,158,11,0.12)' }}>
                             <Trophy size={14} style={{ color: '#fcd34d' }} />
                         </div>
                         <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Top Closers</h3>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 overflow-y-auto custom-scrollbar pr-1">
                         {topConsultores.length === 0 ? (
-                            <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-widest">Aguardando fechamentos</p>
+                            <p className="text-center py-10 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Aguardando fechamentos</p>
                         ) : topConsultores.map(([nome, count], idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3.5 rounded-xl transition-all"
-                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div key={idx} className="flex items-center justify-between p-3.5 rounded-xl transition-all bg-white/[0.02] border border-white/[0.06]">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black"
                                         style={idx === 0
                                             ? { background: 'rgba(245,158,11,0.15)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.25)', boxShadow: '0 0 12px rgba(245,158,11,0.20)' }
-                                            : { background: 'rgba(255,255,255,0.05)', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }
+                                            : { background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }
                                         }>
                                         {idx + 1}º
                                     </div>
-                                    <span className="text-[12px] font-bold text-slate-300">{nome}</span>
+                                    <span className="text-[12px] font-bold text-slate-400">{nome}</span>
                                 </div>
-                                <span className="text-[10px] font-black font-mono px-3 py-1 rounded-lg"
-                                    style={idx === 0
-                                        ? { background: 'rgba(16,185,129,0.10)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.20)' }
-                                        : { background: 'rgba(255,255,255,0.04)', color: '#64748b', border: '1px solid rgba(255,255,255,0.07)' }
-                                    }>
+                                <span className="text-[10px] font-black font-mono px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                                     {count} {count === 1 ? 'Win' : 'Wins'}
                                 </span>
                             </div>
@@ -424,26 +426,27 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                     </div>
                 </div>
 
-                <div className="glass-card p-6">
+                {/* 6. DIAGNÓSTICO DE PERDA */}
+                <div className="glass-card p-6 flex flex-col h-[450px]">
                     <div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.05]">
                         <div className="p-2 rounded-xl" style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.20)', boxShadow: '0 0 12px rgba(244,63,94,0.12)' }}>
                             <TrendingDown size={14} style={{ color: '#fda4af' }} />
                         </div>
                         <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Diagnóstico de Perda</h3>
                     </div>
-                    <div className="space-y-5">
+                    <div className="space-y-5 overflow-y-auto custom-scrollbar pr-1">
                         {topMotivosPerda.length === 0 ? (
-                            <p className="text-center py-10 text-[10px] text-slate-500 font-bold uppercase tracking-widest">Sem perdas registradas</p>
+                            <p className="text-center py-10 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sem perdas registradas</p>
                         ) : topMotivosPerda.map(([motivo, count], idx) => {
                             const total = leads.filter(l => l.status === 'Perdido').length;
                             const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
                             return (
                                 <div key={idx} className="group">
                                     <div className="flex justify-between items-end mb-2">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate pr-4 group-hover:text-slate-200 transition-colors">{motivo}</span>
-                                        <span className="text-[11px] font-black font-mono text-slate-400">{percentage}%</span>
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider truncate pr-4 group-hover:text-slate-200 transition-colors">{motivo}</span>
+                                        <span className="text-[11px] font-black font-mono text-slate-300">{percentage}%</span>
                                     </div>
-                                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                    <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/[0.05]">
                                         <div
                                             className="h-full rounded-full transition-all group-hover:opacity-100"
                                             style={{

@@ -22,6 +22,11 @@ export const createLead = async (payload: Partial<Lead>) => {
         delete dbPayload.nome;
     }
 
+    if (dbPayload.dataAcao !== undefined) {
+        dbPayload.data_acao = dbPayload.dataAcao;
+        delete dbPayload.dataAcao;
+    }
+
     const { data, error } = await supabase.from('leads').insert([dbPayload]).select().single();
     if (error) throw error;
     return data;
@@ -35,6 +40,12 @@ export const updateLead = async (id: number, payload: Partial<Lead>) => {
     if (dbPayload.nome !== undefined) {
         dbPayload.nomecliente = dbPayload.nome;
         delete dbPayload.nome;
+    }
+
+    // Mapeamento para as novas colunas no Supabase
+    if (dbPayload.dataAcao !== undefined) {
+        dbPayload.data_acao = dbPayload.dataAcao;
+        delete dbPayload.dataAcao;
     }
 
     const { error } = await supabase.from('leads').update(dbPayload).eq('id', id);

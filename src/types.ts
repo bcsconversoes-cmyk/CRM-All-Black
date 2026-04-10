@@ -59,7 +59,6 @@ export interface Lead {
 
 export const STAGES = [
     'Lead',
-    'Aguardando Informações',
     'Planejamento',
     'Fechamento',
     'Follow-up',
@@ -71,7 +70,6 @@ export const STAGES = [
 
 export const STAGE_SLAS: Record<string, number> = {
     'Lead': 3,
-    'Aguardando Informações': 3,
     'Planejamento': 5,
     'Fechamento': 10,
     'Follow-up': 5,

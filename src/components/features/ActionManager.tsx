@@ -43,7 +43,7 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, acoesDi
                     </div>
                     {lead.acao === 'Agendado' && (
                         <div className="col-span-2 md:col-span-1 animate-in fade-in">
-                            <Field label="Data Limite"><input type="date" className={`${inputCls} bg-[#0B1121] font-mono text-blue-400 p-4 rounded-xl border border-slate-800`} value={lead.dataAcao || ''} onChange={e => handleUpdateLead({ dataAcao: e.target.value })} /></Field>
+                            <Field label="Data Limite"><input type="date" className={`${inputCls} bg-[#0b1426] font-mono text-[#60a5fa] p-4 rounded-xl border border-blue-500/20 shadow-[0_0_15px_rgba(37,99,235,0.1)]`} value={lead.dataAcao || ''} onChange={e => handleUpdateLead({ dataAcao: e.target.value })} /></Field>
                         </div>
                     )}
                 </div>
