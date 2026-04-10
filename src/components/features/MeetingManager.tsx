@@ -27,19 +27,12 @@ export const MeetingManager: React.FC<Props> = ({
             <div className="glass-card p-7">
                 <SectionTitle icon={Calendar} title="Registro de Encontros & Follow-up" />
                 <div className="mb-8">
-                    {!novaReuniao && <button onClick={() => setNovaReuniao({ status: 'Agendada' })} className="px-6 py-4 bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><Plus size={16} /> Novo Registro</button>}
+                    {!novaReuniao && <button onClick={() => setNovaReuniao({ status: 'Agendada', titulo: 'Reunião' })} className="px-6 py-4 bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><Plus size={16} /> Novo Registro</button>}
                 </div>
 
                 {novaReuniao && (
                     <div className="p-7 rounded-2xl mb-8 animate-in" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.22)', boxShadow: '0 0 30px rgba(37,99,235,0.10)' }}>
                         <div className="grid grid-cols-2 gap-8 mb-8">
-                            <div className="col-span-2">
-                                <Field label="Pauta Estratégica">
-                                    <select className={selectCls} style={selectStyle} value={novaReuniao.titulo || ''} onChange={e => handlePautaChange(e.target.value)}>
-                                        <option value="">Selecione...</option><option value="Contato Consultor (7 dias)">Contato Consultor (7 dias)</option><option value="FUP - Planejamento (7 dias)">FUP - Planejamento (7 dias)</option><option value="FUP - Fechamento (7 dias)">FUP - Fechamento (7 dias)</option><option value="FUP - Pendências (7 dias)">FUP - Pendências (7 dias)</option>
-                                    </select>
-                                </Field>
-                            </div>
                             <Field label="Data"><input type="date" className={`${inputCls} bg-[#111827] font-mono p-4 rounded-xl border border-slate-700`} onChange={e => setNovaReuniao({ ...novaReuniao, data: e.target.value })} value={novaReuniao.data || ''} /></Field>
                             <Field label="Status">
                                 <select className={selectCls} style={selectStyle} value={novaReuniao.status} onChange={e => setNovaReuniao({ ...novaReuniao, status: e.target.value as Reuniao['status'] })}>
@@ -49,8 +42,8 @@ export const MeetingManager: React.FC<Props> = ({
                             <div className="col-span-2">
                                 <Field label="Anotações / Acordos"><textarea className={`${inputCls} min-h-[100px] bg-[#111827] p-4 rounded-xl border border-slate-700`} onChange={e => setNovaReuniao({ ...novaReuniao, anotacoes: e.target.value })} value={novaReuniao.anotacoes || ''} /></Field>
                                 <div className="flex flex-wrap gap-3 mt-4">
-                                    <button onClick={() => setNovaReuniao({ ...novaReuniao, anotacoes: (novaReuniao.anotacoes || '') + getDynamicSnippets(novaReuniao.titulo || '').conf })} className="text-[9px] bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20 text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-colors flex items-center gap-2"><MessageCircle size={12} /> Confirmação</button>
-                                    <button onClick={() => setNovaReuniao({ ...novaReuniao, anotacoes: (novaReuniao.anotacoes || '') + getDynamicSnippets(novaReuniao.titulo || '').rem })} className="text-[9px] bg-amber-500/10 px-3 py-2 rounded-lg border border-amber-500/20 text-amber-400 uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-colors flex items-center gap-2"><AlertCircle size={12} /> Remarcação</button>
+                                    <button onClick={() => setNovaReuniao({ ...novaReuniao, anotacoes: (novaReuniao.anotacoes || '') + getDynamicSnippets('').conf })} className="text-[9px] bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20 text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-colors flex items-center gap-2"><MessageCircle size={12} /> Confirmação</button>
+                                    <button onClick={() => setNovaReuniao({ ...novaReuniao, anotacoes: (novaReuniao.anotacoes || '') + getDynamicSnippets('').rem })} className="text-[9px] bg-amber-500/10 px-3 py-2 rounded-lg border border-amber-500/20 text-amber-400 uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-colors flex items-center gap-2"><AlertCircle size={12} /> Remarcação</button>
                                 </div>
                             </div>
                         </div>

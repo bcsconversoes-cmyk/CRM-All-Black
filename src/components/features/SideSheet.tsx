@@ -89,6 +89,21 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
 
         if (updates.acao === 'No show') {
             const now = new Date().toLocaleString('pt-BR');
+            const [d, m, y] = now.split(' ')[0].split('/');
+            const dateIso = `${y}-${m}-${d}`;
+            
+            const noShowReuniao: Reuniao = {
+                id: `noshow-${Date.now()}`,
+                data: now.split(' ')[0],
+                hora: now.split(' ')[1].slice(0, 5),
+                titulo: `No-Show: ${updated.status}`,
+                status: 'No-Show',
+                anotacoes: `No-Show registrado automaticamente via Ação Direta na etapa de ${updated.status}.`
+            };
+            
+            const safeReunioes = Array.isArray(updated.reunioes) ? updated.reunioes : [];
+            updated.reunioes = [noShowReuniao, ...safeReunioes];
+            
             const safeHistorico = Array.isArray(updated.historico) ? updated.historico : [];
             updated.historico = [`No-Show registrado na etapa de ${updated.status} em ${now}`, ...safeHistorico];
         }
@@ -119,7 +134,7 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
         switch (lead.status) {
             case 'Planejamento': return ['Aguardando informações', 'Agendar', 'Agendado', 'Pronto'];
             case 'Fechamento': return ['Agendar', 'Agendado', 'No show'];
-            case 'Follow-up': return ['Enviar Proposta (Cliente)', 'Acompanhamento 1 (Cliente)', 'Acompanhamento 2 (Cliente)', 'Prioridade Atual (Cliente)', 'Encerrar Contato (Cliente)', 'Agendado'];
+            case 'Follow-up': return ['Agendar', 'Agendado', 'No show', 'Acompanhamento (Cliente)'];
             case 'Pendência': return ['Aguardando documentação', 'Documentação Enviada', 'Em Análise'];
             default: return [];
         }
