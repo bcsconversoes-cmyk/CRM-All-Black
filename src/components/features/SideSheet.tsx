@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, MessageCircle, History, Plus, Loader2, User, DollarSign, Calendar, Link2, Shield, Check, Send, Activity, AlertCircle, Trash2, MessageSquare, AlertTriangle } from 'lucide-react';
+import { X, Save, MessageCircle, History, Plus, Loader2, User, DollarSign, Calendar, Link2, Shield, Check, Send, Activity, AlertCircle, Trash2, MessageSquare, AlertTriangle, MonitorPlay } from 'lucide-react';
 import { Lead, Consultor, STAGES, Reuniao } from '../../types';
 import { checkFastTrack, getSnippets, formatMoney, parseDateInput, calcAge, calcIMC, formatPhone, getWhatsAppLink } from '../../utils/helpers';
 import { supabase } from '../../utils/supabase';
@@ -269,6 +269,20 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
                                             <SalesforceIcon className="w-4 h-4" color="#475569" />
                                         </div>
                                     )}
+                                    <button onClick={() => {
+                                        const params = new URLSearchParams({
+                                            id: lead.id.toString(),
+                                            name: lead.nome || '',
+                                            income: lead.renda?.toString() || '',
+                                            networth: lead.patrimonio?.toString() || ''
+                                        });
+                                        window.open(`/apresentacao.html?${params.toString()}`, '_blank');
+                                    }}
+                                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                                        style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.22)', color: '#a5b4fc' }}
+                                        title="Ver Apresentação Personalizada">
+                                        <MonitorPlay size={15} />
+                                    </button>
                                 </div>
                             )}
                         </div>

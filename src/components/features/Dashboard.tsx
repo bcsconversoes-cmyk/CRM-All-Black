@@ -54,9 +54,9 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
             taxaNoShow: noShowRate,
             leadsCadencia: cadencia,
             slaBreached: sla,
-            topMotivosPerda: Object.entries(motivos).sort((a, b) => b[1] - a[1]).slice(0, 4),
             topConsultores: Object.entries(ranking).sort((a, b) => b[1] - a[1]).slice(0, 5),
             winRate: leads.length ? Math.round((ganhos.length / leads.length) * 100) : 0,
+            leadsPlanejamentoPendente: ativos.filter(l => l.status === 'Planejamento' && l.acao !== 'Pronto'),
         };
     }, [leads]);
 
@@ -206,7 +206,7 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div className="glass-card p-6 flex flex-col h-[420px]">
                     <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
                         <div className="flex items-center gap-3">
@@ -328,6 +328,61 @@ export const Dashboard = React.memo(function Dashboard({ leads, openLead }: { le
                                     <span className="text-[11px] font-black font-mono" style={{ color: '#fda4af' }}>
                                         +{checkSLA(l).days - checkSLA(l).maxDays}d
                                     </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="glass-card p-6 flex flex-col h-[420px]">
+                    <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.05]">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl" style={{ background: 'rgba(37,180,235,0.10)', border: '1px solid rgba(37,180,235,0.20)', boxShadow: '0 0 12px rgba(37,180,235,0.15)' }}>
+                                <Target size={14} style={{ color: '#60a5fa' }} />
+                            </div>
+                            <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">Planejamentos Pendentes</h3>
+                        </div>
+                        <span className="text-[9px] font-black px-2.5 py-1 rounded-lg"
+                            style={{ background: 'rgba(37,180,235,0.10)', border: '1px solid rgba(37,180,235,0.20)', color: '#93c5fd' }}>
+                            {leadsPlanejamentoPendente.length} pendentes
+                        </span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                        {leadsPlanejamentoPendente.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center gap-3">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                                    style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}>
+                                    <Check size={16} style={{ color: '#6ee7b7' }} />
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tudo em dia</p>
+                            </div>
+                        ) : leadsPlanejamentoPendente.map(l => (
+                            <div
+                                key={l.id}
+                                onClick={() => openLead(l)}
+                                className="p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex justify-between items-center group"
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                                onMouseEnter={e => {
+                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(37,99,235,0.06)';
+                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(37,99,235,0.22)';
+                                }}
+                                onMouseLeave={e => {
+                                    (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)';
+                                    (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.06)';
+                                }}
+                            >
+                                <div>
+                                    <p className="text-[12px] font-bold text-slate-200 group-hover:text-white transition-colors mb-1">{l.nome}</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded"
+                                            style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            {l.consultor || 'Sem Consultor'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="px-3 py-1.5 rounded-lg" style={{ background: 'rgba(37,99,235,0.10)', border: '1px solid rgba(37,99,235,0.20)' }}>
+                                    <ArrowRight size={14} style={{ color: '#60a5fa' }} />
                                 </div>
                             </div>
                         ))}
