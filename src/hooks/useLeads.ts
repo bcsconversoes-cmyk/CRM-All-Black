@@ -41,7 +41,28 @@ export function useLeads() {
                 reunioes:  typeof l.reunioes  === 'string' ? JSON.parse(l.reunioes)  : (l.reunioes  || [])
             }));
 
-            setLeads(formatted);
+            const sorted = formatted.sort((a, b) => {
+                const ordemStatus = [
+                    'Lead',
+                    'Aguardando informações',
+                    'Planejamento',
+                    'Fechamento',
+                    'Follow-up',
+                    'Pendência'
+                ];
+                const indexA = ordemStatus.indexOf(a.status || '');
+                const indexB = ordemStatus.indexOf(b.status || '');
+
+                if (indexA !== indexB) {
+                    return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+                }
+
+                const slaA = Number(a.sla) || 0;
+                const slaB = Number(b.sla) || 0;
+                return slaB - slaA;
+            });
+
+            setLeads(sorted);
 
             const consultoresData = await leadService.getConsultores();
             setConsultores(consultoresData);

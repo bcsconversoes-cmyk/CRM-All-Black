@@ -228,8 +228,8 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                 </div>
             )}
 
-            <div className="glass-card overflow-hidden">
-                <div className="overflow-x-auto overflow-y-auto custom-scrollbar" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+            <div className="glass-card">
+                <div className="custom-scrollbar" style={{ maxHeight: 'calc(100vh - 140px)', overflowX: 'auto', overflowY: 'auto' }}>
                     <table className="w-full text-left border-collapse" style={{ minWidth: '1100px' }}>
 
                         <thead className="sticky top-0 z-40" style={{ background: 'rgba(4,8,16,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
@@ -441,7 +441,9 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, globalSearch, 
                                                         ? { background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.22)', boxShadow: '0 0 10px rgba(244,63,94,0.12)' }
                                                         : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
                                                     }>
-                                                    <span className="text-[12px] font-black font-mono" style={{ color: isBreached ? '#fda4af' : '#94a3b8' }}>{days}d</span>
+                                                    <span className="text-[12px] font-black font-mono" style={{ color: isBreached ? '#fda4af' : '#94a3b8' }}>
+                                                        {days !== null && days !== undefined && !isNaN(Number(days)) ? `${days}d` : '-'}
+                                                    </span>
                                                     {isBreached && <AlertTriangle size={11} strokeWidth={2.5} className="animate-pulse" style={{ color: '#fda4af' }} />}
                                                 </div>
                                                 <span className="text-[8px] uppercase tracking-widest mt-1" style={{ color: '#334155' }}>Limite: {limit || 'N/A'}{limit > 0 ? 'd' : ''}</span>

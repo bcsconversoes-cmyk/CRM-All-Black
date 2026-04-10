@@ -149,13 +149,24 @@ export default function App() {
                                 apiError ? { background: '#f43f5e', boxShadow: '0 0 8px rgba(244,63,94,0.6)' } :
                                     { background: '#10b981', boxShadow: '0 0 8px rgba(16,185,129,0.7)' }
                         } />
-                        <button
-                            onClick={() => { setSelectedLead(null); setShowNewLeadModal(true); }}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                            style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.90), rgba(6,182,212,0.75))', color: 'white' }}
-                        >
-                            Novo Lead
-                        </button>
+
+                        <div className="flex items-center gap-3 ml-2">
+                             {/* Ícone Planilha */}
+                            <button className="flex items-center justify-center w-10 h-10 text-gray-400 bg-gray-800 rounded-full hover:text-white hover:bg-gray-700 transition-colors" title="Planilha">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </button>
+                            {/* Ícone Apresentação */}
+                            <button className="flex items-center justify-center w-10 h-10 text-gray-400 bg-gray-800 rounded-full hover:text-white hover:bg-gray-700 transition-colors" title="Apresentação">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+                            </button>
+                            <button
+                                onClick={() => { setSelectedLead(null); setShowNewLeadModal(true); }}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.90), rgba(6,182,212,0.75))', color: 'white' }}
+                            >
+                                Novo Lead
+                            </button>
+                        </div>
                     </div>
                 </div>
             </nav>
