@@ -1,0 +1,57 @@
+/* 1. IMPORTS NO TOPO ABSOLUTO */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+@import "tailwindcss";
+
+/* 2. DESIGN SYSTEM */
+:root {
+  --bg-deep: #040810;
+  --bg-surface: #080f1e;
+  --bg-elevated: #0d1626;
+  --glass-1: rgba(12, 20, 40, 0.55);
+  --glass-2: rgba(14, 24, 48, 0.70);
+  --glass-3: rgba(8, 16, 32, 0.85);
+  --glass-border: rgba(99, 179, 237, 0.08);
+  --glass-border-hover: rgba(99, 179, 237, 0.18);
+  --accent-blue: #2563eb;
+  --accent-cyan: #06b6d4;
+  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
+}
+
+body {
+  background-color: var(--bg-deep);
+  color: #e2e8f0;
+  font-family: var(--font-main);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse 80% 60% at 10% 5%, rgba(37, 99, 235, 0.12) 0%, transparent 65%), var(--bg-deep);
+}
+
+.glass-card {
+  background: var(--glass-1);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 179, 237, 0.15);
+  border-radius: 99px;
+}
+
+.nav-glass {
+  background: rgba(4, 8, 16, 0.80);
+  backdrop-filter: blur(30px);
+  border-bottom: 1px solid rgba(99, 179, 237, 0.07);
+}

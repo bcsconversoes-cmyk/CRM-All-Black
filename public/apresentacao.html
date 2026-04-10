@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Seguro - Apresentação Premium (Master of Persuasion)</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- DESIGN PREMIUM (MATERIAL 3 + LUXURY UI) --- */
+        :root {
+            --md-bg: #0A0A0C;
+            --md-surface: #141418;
+            --md-primary: #A8C7FA;
+            --md-text-primary: #FFFFFF;
+            --md-text-secondary: #A0A0A5;
+            --md-outline: #33333C;
+            --sucesso: #00E676;
+            --alerta: #FF4D4D;
+            --gradiente: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            --gradiente-sucesso: linear-gradient(135deg, #6DD58C 0%, #00E676 100%);
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--md-bg); color: var(--md-text-primary); margin: 0; display: flex; height: 100vh; overflow: hidden; background-image: radial-gradient(circle at 50% -20%, rgba(58, 123, 213, 0.05), transparent 60%);}
+
+        /* --- SIDEBAR RETRÁTIL --- */
+        .sidebar { width: 260px; background-color: rgba(20, 20, 24, 0.8); backdrop-filter: blur(20px); display: flex; flex-direction: column; padding: 24px 12px; border-right: 1px solid rgba(255,255,255,0.05); z-index: 100; transition: width 0.3s ease; overflow-x: hidden; white-space: nowrap;}
+        .sidebar.collapsed { width: 80px; }
+        
+        .logo-area { padding: 0 10px 32px 10px; font-size: 20px; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: space-between; transition: all 0.3s;}
+        .sidebar.collapsed .logo-area { justify-content: center; }
+        .logo-container { display: flex; align-items: center; gap: 12px; }
+        .logo-container i { background: var(--gradiente); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 24px; }
+        .sidebar.collapsed .logo-texto { display: none; }
+        
+        .btn-toggle-sidebar { background: transparent; border: none; color: var(--md-text-secondary); font-size: 20px; cursor: pointer; transition: color 0.2s; padding: 0; display: flex; align-items: center; justify-content: center;}
+        .btn-toggle-sidebar:hover { color: #fff; }
+        .sidebar.collapsed .btn-toggle-sidebar { display: none; } /* Ocultar o botão quando recolhido, mostrar ao passar o mouse ou adicionar botão fixo */
+
+        .menu-item { padding: 16px 20px; color: var(--md-text-secondary); text-decoration: none; display: flex; align-items: center; gap: 16px; cursor: pointer; border-radius: 12px; transition: all 0.3s; font-weight: 500; margin-bottom: 8px;}
+        .menu-item:hover { background-color: rgba(255,255,255,0.05); color: var(--md-text-primary); }
+        .menu-item.ativo { background: rgba(58, 123, 213, 0.1); color: #00d2ff; border-left: 3px solid #00d2ff; border-radius: 0 12px 12px 0;}
+        .menu-item i { font-size: 18px; min-width: 24px; text-align: center;}
+        .sidebar.collapsed .menu-texto { display: none; }
+        .sidebar.collapsed .menu-item { justify-content: center; padding: 16px 0; border-radius: 12px;}
+        .sidebar.collapsed .menu-item.ativo { border-left: none; border-bottom: 3px solid #00d2ff; border-radius: 12px;}
+        
+        /* Botão para abrir sidebar (aparece apenas quando recolhido) */
+        .btn-expand-sidebar { display: none; background: transparent; border: none; color: var(--md-text-secondary); font-size: 20px; cursor: pointer; text-align: center; margin-bottom: 32px; transition: color 0.2s;}
+        .btn-expand-sidebar:hover { color: #fff; }
+        .sidebar.collapsed .btn-expand-sidebar { display: block; }
+
+        /* Área Principal */
+        .conteudo-principal { flex: 1; display: flex; flex-direction: column; overflow-y: auto; scroll-behavior: smooth; transition: width 0.3s ease; }
+        .area-trabalho { padding: 50px; max-width: 1500px; margin: 0 auto; width: 100%; box-sizing: border-box;}
+        .seccao { display: none; animation: fadeIn 0.4s ease; }
+        .ativa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Glassmorphism e Utilitários */
+        .glass-card { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 24px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1); }
+        .cabecalho-seccao { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .cabecalho-seccao h1 { margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -1px; color: #fff;}
+        .btn-gradiente { background: var(--gradiente); color: white; border: none; padding: 12px 28px; border-radius: 100px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;}
+        .btn-gradiente:hover { box-shadow: 0 0 20px rgba(0, 210, 255, 0.4); transform: translateY(-2px); }
+
+        .grid-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+        .cartao { background-color: var(--md-surface); border-radius: 20px; padding: 32px; border: 1px solid rgba(255,255,255,0.03); }
+        .cartao-largo { grid-column: span 2; }
+        .cartao h2 { margin-top: 0; font-size: 16px; color: var(--md-text-secondary); margin-bottom: 24px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px;}
+
+        /* Inputs e Checkboxes */
+        .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .md-input-group { position: relative; margin-bottom: 16px; width: 100%; }
+        .md-input-group label { position: absolute; top: -8px; left: 12px; background-color: var(--md-surface); padding: 0 6px; font-size: 11px; color: var(--md-outline); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; transition: all 0.2s; }
+        .md-input, .md-select, .md-textarea { width: 100%; background: transparent; border: 1px solid var(--md-outline); color: var(--md-text-primary); padding: 16px; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 15px; box-sizing: border-box; transition: all 0.2s; }
+        .md-input:focus, .md-select:focus, .md-textarea:focus { outline: none; border-color: #00d2ff; box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.1); }
+        .md-input-group:focus-within label { color: #00d2ff; }
+        
+        .campo-destaque { color: #00d2ff !important; font-weight: 600; }
+        .campo-readonly { background-color: rgba(255,255,255,0.02) !important; cursor: not-allowed; border-style: dashed; color: var(--md-text-secondary) !important; }
+
+        .checkbox-moderno { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s; margin-bottom: 12px;}
+        .checkbox-moderno:hover { background: rgba(255,255,255,0.05); }
+        .checkbox-moderno input { width: 18px; height: 18px; accent-color: #00d2ff; cursor: pointer; }
+        
+        .alerta-inline { display: none; background: rgba(255, 77, 77, 0.1); border-left: 3px solid var(--alerta); padding: 12px 15px; margin: -5px 0 15px 0; border-radius: 0 4px 4px 0; font-size: 13px; color: var(--alerta); animation: fadeIn 0.3s; line-height: 1.5;}
+
+        /* --- TELA 0: INÍCIO (PITCH EMOCIONAL) --- */
+        .pitch-container { display: flex; flex-direction: column; align-items: center; max-width: 1200px; margin: 0 auto; padding-top: 20px;}
+        .pitch-quote { font-size: 26px; line-height: 1.6; font-weight: 300; font-style: italic; color: #fff; margin-bottom: 50px; position: relative; text-align: center; }
+        .pitch-quote::before { content: '"'; font-size: 80px; color: rgba(0, 210, 255, 0.2); position: absolute; top: -30px; left: -40px; font-family: serif; }
+        .pitch-pergunta { font-size: 22px; color: #00d2ff; font-weight: 600; margin-bottom: 40px; text-align: center; }
+        
+        .grid-pitch { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; width: 100%; margin-bottom: 40px;}
+        
+        /* FOTOS IMPACTANTES */
+        .pitch-card-foto { position: relative; border-radius: 20px; overflow: hidden; height: 500px; display: none; border: 1px solid rgba(255,255,255,0.1); animation: fadeIn 0.5s;}
+        .pitch-card-foto img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        .pitch-card-foto:hover img { transform: scale(1.03); }
+        .pitch-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(10,10,12,1) 0%, rgba(10,10,12,0.8) 40%, rgba(10,10,12,0) 70%); display: flex; flex-direction: column; justify-content: flex-end; padding: 35px; }
+        
+        .pitch-overlay h3 { color: #fff; margin: 0 0 10px 0; font-size: 22px; display: flex; align-items: center; gap: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);}
+        .pitch-overlay p { color: #E6E1E5; line-height: 1.5; margin: 0 0 15px 0; font-size: 15px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);}
+        .pitch-overlay strong { color: #00d2ff; font-size: 16px; }
+
+        /* --- TELA 1.5: APRESENTAÇÃO (COPOS E GRÁFICO ACORDEÃO) --- */
+        .secao-conscientizacao { padding: 40px; margin-bottom: 30px; }
+        .grid-copos { display: grid; grid-template-columns: 1fr auto 1fr; gap: 40px; align-items: center; }
+        .cartao-copo { padding: 30px; text-align: center; display: flex; flex-direction: column; align-items: center; border-radius: 16px;}
+        .cartao-copo h3 { margin: 0 0 20px 0; font-size: 18px; font-weight: 500; }
+        .cartao-copo p { color: var(--md-text-secondary); font-size: 14px; margin: 20px 0 0 0; line-height: 1.6; }
+        .copo-arte { border: 2px solid rgba(255,255,255,0.2); border-top: none; border-radius: 0 0 16px 16px; width: 80px; height: 100px; position: relative; overflow: hidden; }
+        
+        /* ANIMAÇÃO COPAS */
+        .agua-vazia { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(180deg, rgba(168, 199, 250, 0.6), rgba(168, 199, 250, 0.2)); animation: encherEsvaziar 12s infinite ease-in-out; }
+        @keyframes encherEsvaziar { 0% { height: 5%; } 83.33% { height: 90%; } 90% { height: 90%; } 100% { height: 5%; } }
+        
+        .agua-cheia { position: absolute; bottom: 0; left: 0; width: 100%; height: 95%; background: var(--gradiente-sucesso); opacity: 0.9; box-shadow: 0 -10px 20px rgba(0,230,118,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden;}
+        
+        /* Escudo Pulsante Sutil */
+        .escudo-copo { color: rgba(255,255,255,0.6); font-size: 40px; animation: pulse-shield 3s infinite ease-in-out; }
+        @keyframes pulse-shield { 0% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.15); opacity: 0.8; } 100% { transform: scale(1); opacity: 0.6; } }
+
+        /* DESAFIO DO TEMPO (Acordeão) */
+        .grafico-desafio-full { width: 100%; padding: 40px; margin-bottom: 24px; transition: all 0.3s ease;}
+        .cabecalho-acordeon { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;}
+        .cabecalho-acordeon:hover h2 { color: #fff; }
+        
+        .grafico-canvas-container { height: 500px; width: 100%; margin-bottom: 30px; margin-top: 20px;}
+        
+        .accordion-desafio-horizontal { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; width: 100%; }
+        .acc-item { border: 1px solid var(--md-outline); border-radius: 12px; background: rgba(255,255,255,0.02); transition: all 0.3s; cursor: pointer; overflow: hidden; display: flex; flex-direction: column;}
+        .acc-item:hover { border-color: rgba(255,255,255,0.3); }
+        .acc-item.ativa { border-color: #00d2ff; background: rgba(0, 210, 255, 0.05); transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2);}
+        .acc-header { padding: 18px; font-weight: 600; color: #fff; display: flex; justify-content: space-between; align-items: center; font-size: 15px; border-bottom: 1px solid transparent;}
+        .acc-item.ativa .acc-header { border-bottom-color: rgba(0, 210, 255, 0.1); }
+        .acc-body { padding: 18px; font-size: 14px; color: var(--md-text-secondary); line-height: 1.6; display: none; flex: 1; }
+        .acc-item.ativa .acc-body { display: block; animation: fadeIn 0.4s ease; }
+
+        /* --- PLANEJAMENTO E PROPOSTA --- */
+        .tabela-premium { width: 100%; border-collapse: collapse; }
+        .tabela-premium th { color: var(--md-text-secondary); font-weight: 500; font-size: 12px; text-align: left; padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); text-transform: uppercase;}
+        .tabela-premium td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.02); color: var(--md-text-primary); }
+        .input-tabela { background: transparent; border: 1px solid transparent; color: inherit; font-family: 'Inter', sans-serif; font-size: 14px; width: 100%; padding: 8px; border-radius: 6px; transition: all 0.2s; }
+        .input-tabela:focus, .input-tabela:hover:not(.readonly) { background: rgba(255,255,255,0.05); outline: none; }
+        .input-meses { width: 50px; text-align: center; border: 1px solid var(--md-outline); border-radius: 6px; background: transparent; color: #00d2ff; padding: 4px; margin: 0 5px; font-weight: bold; }
+        .glow-text { text-shadow: 0 0 20px rgba(0, 230, 118, 0.4); }
+        .linha-accordion { cursor: pointer; transition: background 0.2s; }
+        .linha-accordion:hover { background-color: rgba(255, 255, 255, 0.02); }
+        
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar" id="sidebar">
+        <button class="btn-expand-sidebar" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        
+        <div class="logo-area">
+            <div class="logo-container">
+                <i class="fa-solid fa-shield-halved"></i> <span class="logo-texto">CRM Seguros</span>
+            </div>
+            <button class="btn-toggle-sidebar" onclick="toggleSidebar()"><i class="fa-solid fa-bars-staggered"></i></button>
+        </div>
+
+        <div class="menu-item ativo" onclick="mudarAba('inicio', this)">
+            <i class="fa-solid fa-house"></i> <span class="menu-texto">Início (Pitch)</span>
+        </div>
+        <div class="menu-item" onclick="mudarAba('dados', this)">
+            <i class="fa-regular fa-id-card"></i> <span class="menu-texto">Dados Pessoais</span>
+        </div>
+        <div class="menu-item" onclick="mudarAba('apresentacao', this)">
+            <i class="fa-solid fa-comments"></i> <span class="menu-texto">Apresentação</span>
+        </div>
+        <div class="menu-item" onclick="mudarAba('planeamento', this)">
+            <i class="fa-solid fa-layer-group"></i> <span class="menu-texto">Planejamento</span>
+        </div>
+        <div class="menu-item" onclick="mudarAba('proposta', this)">
+            <i class="fa-solid fa-check-double"></i> <span class="menu-texto">Proposta Final</span>
+        </div>
+    </aside>
+
+    <main class="conteudo-principal">
+        <div class="area-trabalho">
+            
+            <div id="inicio" class="seccao ativa">
+                <div class="pitch-container">
+                    <div class="pitch-quote">
+                        "Acredito que cada pessoa deveria poder contar com a tranquilidade de saber que seus sonhos e objetivos estarão protegidos independentemente do que aconteça. É por isso que ajudamos pessoas como você com soluções de planejamento financeiro, onde o seguro é a base de tudo."
+                    </div>
+                    
+                    <div class="pitch-pergunta" id="pitchPergunta">
+                        Vamos começar? Você é casado? Tem filhos?
+                    </div>
+
+                    <div class="grid-pitch">
+                        <div id="pitchCasado" class="pitch-card-foto">
+                            <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?q=80&w=1000&auto=format&fit=crop" alt="Família de 4 pessoas abraçada e sorrindo">
+                            <div class="pitch-overlay">
+                                <h3><i class="fa-solid fa-people-roof" style="color: #00d2ff;"></i> Proteção Familiar</h3>
+                                <p>Garantimos que o seu patrimônio e padrão de vida não sejam comprometidos, permitindo que a sua família mantenha a dignidade e os sonhos.</p>
+                                <strong>Isso seria importante pra você?</strong>
+                            </div>
+                        </div>
+
+                        <div id="pitchFilhos" class="pitch-card-foto">
+                            <img src="https://images.unsplash.com/photo-1596066190600-3af9aadaaea1?q=80&w=1000&auto=format&fit=crop" alt="Pai abraçando filho">
+                            <div class="pitch-overlay">
+                                <h3><i class="fa-solid fa-graduation-cap" style="color: #00d2ff;"></i> Futuro Garantido</h3>
+                                <p>Aconteça o que acontecer, o maior legado que você pode deixar é a certeza de que eles estarão amparados.</p>
+                                <strong>Seria importante garantir a educação dos filhos até o fim da faculdade?</strong>
+                            </div>
+                        </div>
+
+                        <div id="pitchSolteiro" class="pitch-card-foto">
+                            <img src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=1000&auto=format&fit=crop" alt="Profissional de sucesso">
+                            <div class="pitch-overlay">
+                                <h3><i class="fa-solid fa-user-shield" style="color: #00d2ff;"></i> Blindagem de Renda</h3>
+                                <p>Você é a sua maior máquina de fazer dinheiro. Garantimos que a sua renda continue, mesmo que você precise parar.</p>
+                                <strong>Seria importante proteger sua renda caso um imprevisto o afaste do trabalho?</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-gradiente" style="font-size: 16px; padding: 15px 40px;" onclick="document.querySelectorAll('.menu-item')[1].click()">
+                        Iniciar Diagnóstico <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="dados" class="seccao">
+                <div class="cabecalho-seccao">
+                    <h1>Diagnóstico Financeiro</h1>
+                </div>
+
+                <div class="grid-cards">
+                    <div class="cartao">
+                        <h2>Informações Pessoais</h2>
+                        <div class="md-input-group"><label>Nome Completo</label><input type="text" id="nomeCliente" class="md-input" oninput="atualizarPitch()" placeholder="Como gostaria de ser chamado?"></div>
+                        <div class="md-input-group"><label>Profissão</label><input type="text" id="profissao" class="md-input" oninput="recalcularTudo()"></div>
+                        
+                        <div class="linha-dupla">
+                            <div class="md-input-group"><label>Nascimento</label><input type="text" id="dataNascimento" class="md-input" placeholder="DD/MM/AAAA" maxlength="10" oninput="mascaraData(this)"></div>
+                            <div class="md-input-group"><label>Idade</label><input type="text" id="idade" class="md-input campo-readonly" readonly="readonly" tabindex="-1"></div>
+                        </div>
+                        <div class="linha-dupla">
+                            <div class="md-input-group"><label>Sexo</label><select id="sexoCliente" class="md-select" onchange="recalcularTudo()"><option value="">Selecione</option><option>Masculino</option><option>Feminino</option></select></div>
+                            <div class="md-input-group">
+                                <label>Estado Civil</label>
+                                <select id="estadoCivil" class="md-select" onchange="atualizarPitch()"><option value="">Selecione</option><option>Solteiro(a)</option><option>Casado(a)</option><option>União Estável</option><option>Divorciado(a)</option><option>Viúvo(a)</option></select>
+                            </div>
+                        </div>
+                        
+                        <label class="checkbox-moderno" style="margin-top: 10px;">
+                            <input type="checkbox" id="temFilhos" onchange="atualizarPitch()">
+                            <span>O cliente possui filhos?</span>
+                        </label>
+                        
+                        <div class="linha-dupla" style="margin-bottom: 0; margin-top: 20px;">
+                            <div class="md-input-group"><label>Peso (kg)</label><input type="number" id="peso" class="md-input" oninput="calcularIMC()"></div>
+                            <div class="md-input-group"><label>Altura (cm)</label><input type="number" id="altura" class="md-input" oninput="calcularIMC()"></div>
+                        </div>
+                        <div class="md-input-group"><label>Índice IMC</label><input type="text" id="imc" class="md-input campo-readonly campo-destaque" readonly="readonly" tabindex="-1"></div>
+                    </div>
+
+                    <div class="cartao">
+                        <h2>Levantamento Financeiro</h2>
+                        <div class="linha-dupla">
+                            <div class="md-input-group"><label>Renda Mensal</label><input type="text" id="dadosRenda" class="md-input" placeholder="0" oninput="formatarNumero(this); recalcularTudo()"></div>
+                            <div class="md-input-group"><label>Despesa Mensal</label><input type="text" id="dadosDespesa" class="md-input" placeholder="0" oninput="formatarNumero(this); recalcularTudo()"></div>
+                        </div>
+                        
+                        <label class="checkbox-moderno">
+                            <input type="checkbox" id="possuiReservaEmerg" onchange="recalcularTudo()">
+                            <span>O cliente possui Reserva de Emergência?</span>
+                        </label>
+
+                        <div class="md-input-group"><label>Educação dos Filhos</label><input type="text" id="dadosEducacao" class="md-input" placeholder="0" oninput="formatarNumero(this); recalcularTudo()"></div>
+                        
+                        <div class="linha-dupla">
+                            <div class="md-input-group"><label>Patrimônio Acumulado</label><input type="text" id="dadosPatrimonio" class="md-input" placeholder="0" oninput="formatarNumero(this); recalcularTudo()"></div>
+                            <div class="md-input-group"><label>Saldo Previdência</label><input type="text" id="dadosPrevidencia" class="md-input" placeholder="0" oninput="formatarNumero(this); recalcularTudo()"></div>
+                        </div>
+                        
+                        <div class="glass-card" style="padding: 20px; margin-top: 20px; border-radius: 16px;">
+                            <div class="md-input-group" style="margin-bottom: 10px;"><label style="background: transparent;">Reserva Recomendada (6x Despesa)</label><input type="text" id="dadosReserva" class="md-input campo-destaque" style="border: none; border-bottom: 1px solid rgba(255,255,255,0.1); border-radius: 0;" readonly></div>
+                            <div class="md-input-group" style="margin-bottom: 0;"><label style="background: transparent;">Inventário Estimado (15% Pat. - Prev.)</label><input type="text" id="dadosInventario" class="md-input campo-destaque" style="border: none; border-bottom: 1px solid rgba(255,255,255,0.1); border-radius: 0;" readonly></div>
+                        </div>
+                    </div>
+                    
+                    <div class="cartao cartao-largo">
+                        <h2><i class="fa-solid fa-clipboard-list" style="color: #00d2ff;"></i> Questionário de Risco (Saúde)</h2>
+                        
+                        <label class="checkbox-moderno">
+                            <input type="checkbox" id="chkFuma" onchange="verificarAgravo()">
+                            <span>Faz uso de tabaco ou nicotina?</span>
+                        </label>
+                        <div id="msgFuma" class="alerta-inline"><strong>Possível Agravo:</strong> Por favor, informe a quantidade diária e há quanto tempo faz uso nas anotações abaixo.</div>
+
+                        <label class="checkbox-moderno">
+                            <input type="checkbox" id="chkDoenca" onchange="verificarAgravo()">
+                            <span>Possui doença pré-existente ou toma medicação contínua?</span>
+                        </label>
+                        <div id="msgDoenca" class="alerta-inline"><strong>Possível Agravo:</strong> Informe o diagnóstico exato, data do início e medicações em uso.</div>
+
+                        <label class="checkbox-moderno">
+                            <input type="checkbox" id="chkCirurgia" onchange="verificarAgravo()">
+                            <span>Histórico recente de cirurgias ou internações (últimos 5 anos)?</span>
+                        </label>
+                        <div id="msgCirurgia" class="alerta-inline"><strong>Possível Agravo:</strong> Informe a data, o motivo do procedimento e se há sequelas.</div>
+
+                        <div class="md-input-group" style="margin-top: 20px;">
+                            <label>Anotações Clínicas</label>
+                            <textarea id="obsRisco" class="md-textarea" style="height: 100px; resize: none; padding-top: 20px;" placeholder="Detalhe aqui as informações dos alertas de saúde..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="apresentacao" class="seccao">
+                
+                <div class="glass-card secao-conscientizacao" style="margin-bottom: 40px; text-align: left;">
+                    <div class="cabecalho-seccao" style="margin-bottom: 20px;">
+                        <h1 style="font-size: 32px; margin:0;">A Diferença entre Construir e Proteger</h1>
+                    </div>
+
+                    <div class="grid-copos">
+                        <div class="cartao-copo">
+                            <h3 style="color: #A8C7FA;"><i class="fa-solid fa-chart-line" style="opacity: 0.5;"></i> Os Seus Investimentos</h3>
+                            <div class="copo-arte">
+                                <div class="agua-vazia"></div>
+                            </div>
+                            <p>Leva anos para encher gota a gota. Qualquer imprevisto no caminho entorna o copo e destrói a sua reserva.</p>
+                        </div>
+                        <div style="font-size: 24px; color: var(--md-text-secondary); opacity: 0.5;"><i class="fa-solid fa-plus"></i></div>
+                        <div class="cartao-copo" style="background-color: rgba(109, 213, 140, 0.05); border-color: var(--sucesso);">
+                            <h3 style="color: var(--sucesso);"><i class="fa-solid fa-shield-heart"></i> Com Seguro de Vida</h3>
+                            <div class="copo-arte" style="border-color: rgba(0, 230, 118, 0.4);">
+                                <div class="agua-cheia">
+                                    <i class="fa-solid fa-shield-blank escudo-copo"></i>
+                                </div>
+                            </div>
+                            <p>Um copo que <strong>já nasce cheio</strong> no primeiro dia. Se o imprevisto chegar, você consome este copo e salva os seus investimentos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card grafico-desafio-full">
+                    
+                    <div class="cabecalho-acordeon" onclick="toggleDesafioAcordeon()">
+                        <div>
+                            <h2 style="margin: 0; font-size: 26px; color: #fff; transition: color 0.2s;"><i class="fa-solid fa-chart-area" style="color: #00d2ff; margin-right: 12px;"></i> O Desafio do Tempo</h2>
+                            <p style="color: var(--md-text-secondary); font-size: 15px; margin: 8px 0 0 0;">Análise do seu patrimônio baseada na sua idade. Clique para ver.</p>
+                        </div>
+                        <i id="icone-desafio-main" class="fa-solid fa-chevron-up" style="font-size: 24px; color: #00d2ff; transition: transform 0.3s;"></i>
+                    </div>
+                    
+                    <div id="corpoDesafioAcordeon" style="display: block; margin-top: 30px;">
+                        
+                        <div class="grafico-canvas-container">
+                            <canvas id="graficoDesafio"></canvas>
+                        </div>
+                        
+                        <div class="accordion-desafio-horizontal">
+                            <div class="acc-item ativa" id="fase1Desafio" onclick="setFaseDesafio(1)">
+                                <div class="acc-header"><span>1. O Início da Jornada</span><i class="fa-solid fa-seedling"></i></div>
+                                <div class="acc-body">Você está no início da construção. Está a gerar renda e a guardar uma parte para construir o seu futuro passo a passo.</div>
+                            </div>
+                            <div class="acc-item" id="fase2Desafio" onclick="setFaseDesafio(2)">
+                                <div class="acc-header"><span>2. O Crescimento</span><i class="fa-solid fa-arrow-trend-up"></i></div>
+                                <div class="acc-body">A disciplina funciona. Os aportes consistentes fazem o seu patrimônio crescer de forma saudável rumo ao seu grande objetivo de vida.</div>
+                            </div>
+                            <div class="acc-item" id="fase3Desafio" onclick="setFaseDesafio(3)">
+                                <div class="acc-header" style="color: var(--alerta);"><span>3. O Imprevisto</span><i class="fa-solid fa-skull-crossbones"></i></div>
+                                <div class="acc-body">Uma doença grave, um acidente ou invalidez acontece repentinamente. A sua capacidade de gerar renda para instantaneamente.</div>
+                            </div>
+                            <div class="acc-item" id="fase4Desafio" onclick="setFaseDesafio(4)">
+                                <div class="acc-header" style="color: var(--alerta);"><span>4. Sem Proteção</span><i class="fa-solid fa-chart-line-down"></i></div>
+                                <div class="acc-body">As despesas explodem. Sem renda, você consome todo o patrimônio que demorou anos a construir. O seu futuro é comprometido.</div>
+                            </div>
+                            <div class="acc-item" id="fase5Desafio" onclick="setFaseDesafio(5)">
+                                <div class="acc-header" style="color: var(--sucesso);"><span>5. Com Seguro de Vida</span><i class="fa-solid fa-shield-check"></i></div>
+                                <div class="acc-body">A apólice é acionada e injeta capital imediato. Você paga as despesas sem tocar nos investimentos. O patrimônio está a salvo.</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div id="planeamento" class="seccao">
+                <div class="cabecalho-seccao">
+                    <h1>Desenho da Estrutura de Proteção Ideal</h1>
+                    <button class="btn-gradiente"><i class="fa-solid fa-floppy-disk"></i> Salvar Plano</button>
+                </div>
+
+                <div class="glass-card" style="padding: 10px; overflow: hidden;">
+                    <table class="tabela-premium">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Soluções Recomendadas</th>
+                                <th style="width: 20%;">Capital Sugerido (R$)</th>
+                                <th style="width: 55%;">O Problema que Resolvemos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background-color: rgba(0, 210, 255, 0.05);">
+                                <td><strong style="color: #00d2ff; font-size: 15px;">PROTEÇÃO FAMILIAR (Morte)</strong></td>
+                                <td><input type="text" id="planMorteTotal" class="input-tabela campo-destaque readonly" style="font-size: 16px;" readonly></td>
+                                <td><span style="color: var(--md-text-secondary); font-size: 13px;">Garante a manutenção da estrutura familiar (Soma abaixo):</span></td>
+                            </tr>
+                            <tr>
+                                <td style="padding-left: 30px;"><i class="fa-solid fa-house" style="margin-right: 8px; opacity: 0.5;"></i> Padrão de Vida</td>
+                                <td><input type="text" id="planPadraoVida" class="input-tabela" oninput="formatarNumero(this); somarMorte()"></td>
+                                <td>Garante que a família pague as contas por <input type="number" id="mesesPadraoVida" class="input-meses" value="60" oninput="recalcularTudo()"> meses, sem perder a casa.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding-left: 30px;"><i class="fa-solid fa-graduation-cap" style="margin-right: 8px; opacity: 0.5;"></i> Educação</td>
+                                <td><input type="text" id="planEducacao" class="input-tabela" oninput="formatarNumero(this); somarMorte()"></td>
+                                <td>Garante o pagamento das mensalidades até à formatura dos filhos.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding-left: 30px;"><i class="fa-solid fa-scale-balanced" style="margin-right: 8px; opacity: 0.5;"></i> Inventário</td>
+                                <td><input type="text" id="planInventario" class="input-tabela" oninput="formatarNumero(this); somarMorte()"></td>
+                                <td>Garante liquidez imediata para impostos e custas, evitando a venda forçada de bens.</td>
+                            </tr>
+                            
+                            <tr style="background-color: rgba(0, 210, 255, 0.02);">
+                                <td style="padding-left: 30px;"><i class="fa-solid fa-cross" style="margin-right: 8px; opacity: 0.5; color: #A0A0A5;"></i> <span id="labelFuneral">Assistência Funeral</span></td>
+                                <td><input type="text" id="planFuneral" class="input-tabela" placeholder="R$ 10.000" oninput="formatarNumero(this); somarMorte()"></td>
+                                <td>Resolve toda a burocracia e cobre os custos num momento difícil.</td>
+                            </tr>
+
+                            <tr class="linha-accordion" onclick="toggleVida()">
+                                <td colspan="3" style="border-top: 1px solid rgba(255,255,255,0.05);">
+                                    <strong style="color: var(--sucesso); font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                                        PROTEÇÃO EM VIDA (FOCO EM VOCÊ) <i id="icone-vida" class="fa-solid fa-chevron-down" style="font-size: 12px;"></i>
+                                    </strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tbody id="corpoVida" style="display: none;">
+                            <tr>
+                                <td>Doenças Graves</td>
+                                <td><input type="text" id="planDoencasGraves" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Garante dinheiro para os melhores tratamentos médicos enquanto você foca 100% na sua cura.</td>
+                            </tr>
+                            <tr>
+                                <td>Invalidez Permanente</td>
+                                <td><input type="text" id="planInvalidezPerm" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Garante a sua independência financeira para não se tornar um peso se perder a capacidade de trabalhar.</td>
+                            </tr>
+                            <tr>
+                                <td>Invalidez Acidental (IPA)</td>
+                                <td><input type="text" id="planIPA" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Protege seu padrão de vida caso um acidente tire parcialmente a funcionalidade de um membro.</td>
+                            </tr>
+                            <tr id="rowIncapTemp">
+                                <td>Incapacidade Temporária</td>
+                                <td><input type="text" id="planIncapTemp" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Paga o seu salário enquanto estiver impossibilitado de trabalhar, mantendo as contas em dia.</td>
+                            </tr>
+                            <tr>
+                                <td>Diária por Internação</td>
+                                <td><input type="text" id="planDIT" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Cobre as despesas extras geradas por uma internação, garantindo conforto sem esvaziar reservas.</td>
+                            </tr>
+                            <tr>
+                                <td>Cirurgias</td>
+                                <td><input type="text" id="planCirurgia" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Permite que você escolha o melhor médico e hospital para o procedimento, não o mais barato.</td>
+                            </tr>
+                            <tr id="rowInvEstendida" style="display: none;">
+                                <td id="labelInvEstendida">Invalidez Estendida</td>
+                                <td><input type="text" id="planInvEstendida" class="input-tabela campo-destaque" oninput="formatarNumero(this)"></td>
+                                <td>Protege a sua principal ferramenta de trabalho. Se suas mãos falharem, o seu patrimônio não falhará.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="proposta" class="seccao">
+                <div class="cabecalho-seccao">
+                    <div>
+                        <h1>Proposta Final</h1>
+                        <p style="color: var(--md-text-secondary); margin: 5px 0 0 0; font-size: 15px;">Conteúdo não preenchido nesta etapa.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 0. LÓGICA DA SIDEBAR RETRÁTIL ---
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('collapsed');
+            
+            // Dispara resize na janela repetidamente durante a transição CSS (0.3s) para o Chart.js acompanhar suavemente
+            let start = Date.now();
+            let timer = setInterval(() => {
+                window.dispatchEvent(new Event('resize'));
+                if (Date.now() - start > 350) clearInterval(timer);
+            }, 15);
+        }
+
+        // --- 1. LÓGICA DO PITCH (INÍCIO E FUNERAL) ---
+        function atualizarPitch() {
+            let nome = document.getElementById('nomeCliente').value || '';
+            let nomePrimeiro = nome.split(' ')[0];
+            let estadoCivil = document.getElementById('estadoCivil').value || '';
+            let temFilhos = document.getElementById('temFilhos').checked;
+            
+            let txtPergunta = nomePrimeiro ? `${nomePrimeiro}, vamos começar. ` : "Vamos começar. ";
+            if (estadoCivil && temFilhos) txtPergunta += `Você é ${estadoCivil.toLowerCase()} e tem filhos, correto?`;
+            else if (estadoCivil) txtPergunta += `Você é ${estadoCivil.toLowerCase()}, correto?`;
+            else if (temFilhos) txtPergunta += `Você tem filhos, correto?`;
+            else txtPergunta += `Você é casado? Tem filhos?`;
+            document.getElementById('pitchPergunta').innerText = txtPergunta;
+            
+            let cardCasado = document.getElementById('pitchCasado');
+            let cardFilhos = document.getElementById('pitchFilhos');
+            let cardSolteiro = document.getElementById('pitchSolteiro');
+            
+            cardCasado.style.display = 'none'; cardFilhos.style.display = 'none'; cardSolteiro.style.display = 'none';
+            
+            if (estadoCivil.includes('Casado') || estadoCivil.includes('União')) { cardCasado.style.display = 'block'; }
+            if (temFilhos) { cardFilhos.style.display = 'block'; }
+            if (estadoCivil.includes('Solteiro') || estadoCivil.includes('Divorciado')) { cardSolteiro.style.display = 'block'; }
+            if (!estadoCivil && !temFilhos) { cardSolteiro.style.display = 'block'; }
+            
+            let labelFuneral = document.getElementById('labelFuneral');
+            if(estadoCivil.includes('Solteiro') && !temFilhos) {
+                labelFuneral.innerText = 'Assistência Funeral (Individual)';
+            } else {
+                labelFuneral.innerText = 'Assistência Funeral (Familiar)';
+            }
+        }
+
+        function mudarAba(idAba, elemento) {
+            document.querySelectorAll('.seccao').forEach(s => s.classList.remove('ativa'));
+            document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('ativo'));
+            document.getElementById(idAba).classList.add('ativa');
+            
+            // Lida com o item quando a sidebar está recolhida
+            if(elemento) elemento.classList.add('ativo');
+            
+            if (idAba === 'inicio') atualizarPitch();
+            if (idAba === 'apresentacao') { 
+                // Garante que o grafico só renderiza/atualiza após a div estar visível (para o Chart.js ler o width correto)
+                setTimeout(() => {
+                    if(!chartDesafio) renderizarGraficoDesafio();
+                    else { chartDesafio.resize(); chartDesafio.update(); }
+                }, 50);
+            }
+        }
+
+        function toggleVida() {
+            const corpo = document.getElementById('corpoVida');
+            const icone = document.getElementById('icone-vida');
+            if (corpo.style.display === 'none' || corpo.style.display === '') {
+                corpo.style.display = 'table-row-group';
+                icone.className = 'fa-solid fa-chevron-up';
+            } else {
+                corpo.style.display = 'none';
+                icone.className = 'fa-solid fa-chevron-down';
+            }
+        }
+        
+        function toggleDesafioAcordeon() {
+            const corpo = document.getElementById('corpoDesafioAcordeon');
+            const icone = document.getElementById('icone-desafio-main');
+            if (corpo.style.display === 'none') {
+                corpo.style.display = 'block';
+                icone.className = 'fa-solid fa-chevron-up';
+                setTimeout(() => { if(chartDesafio) chartDesafio.resize(); }, 50);
+            } else {
+                corpo.style.display = 'none';
+                icone.className = 'fa-solid fa-chevron-down';
+            }
+        }
+
+        // --- 2. QUESTIONÁRIO SAÚDE ---
+        function verificarAgravo() {
+            document.getElementById('msgFuma').style.display = document.getElementById('chkFuma').checked ? 'block' : 'none';
+            document.getElementById('msgDoenca').style.display = document.getElementById('chkDoenca').checked ? 'block' : 'none';
+            document.getElementById('msgCirurgia').style.display = document.getElementById('chkCirurgia').checked ? 'block' : 'none';
+        }
+
+        // --- 3. MÁSCARAS ---
+        let idadeGlobal = 30; 
+        function mascaraData(elemento) {
+            let v = elemento.value.replace(/\D/g, "");
+            if (v.length > 2) v = v.replace(/^(\d{2})(\d)/g, "$1/$2");
+            if (v.length > 5) v = v.replace(/^(\d{2})\/(\d{2})(\d)/g, "$1/$2/$3");
+            elemento.value = v;
+            if (v.length === 10) calcularIdade();
+        }
+
+        function calcularIdade() {
+            let val = document.getElementById('dataNascimento').value;
+            if(val.length !== 10) return;
+            let partes = val.split('/');
+            let nasc = new Date(partes[2], partes[1] - 1, partes[0]);
+            let hoje = new Date();
+            let idade = hoje.getFullYear() - nasc.getFullYear();
+            if(hoje.getMonth() < nasc.getMonth() || (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate())) idade--;
+            idadeGlobal = idade; 
+            document.getElementById('idade').value = idade + " Anos";
+            
+            // Destroi e recria o desafio com a nova idade se existir
+            if(chartDesafio) {
+                chartDesafio.destroy();
+                chartDesafio = null;
+                faseAtualDesafio = 1;
+                // Se a aba estiver aberta, renderiza, se não, espera o clique na aba
+                if(document.getElementById('apresentacao').classList.contains('ativa')){
+                    renderizarGraficoDesafio();
+                }
+            }
+        }
+
+        function calcularIMC() {
+            let p = parseFloat(document.getElementById('peso').value), a = parseFloat(document.getElementById('altura').value);
+            if(p > 0 && a > 0) {
+                document.getElementById('imc').value = (p / Math.pow(a/100, 2)).toFixed(2);
+            }
+        }
+
+        function formatarNumero(elemento) {
+            let valor = elemento.value.replace(/\D/g, ''); 
+            if (valor === '') { elemento.value = ''; return; }
+            valor = parseInt(valor, 10).toString();
+            valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1."); 
+            elemento.value = valor;
+        }
+
+        function getValorNumerico(idElemento) {
+            let val = document.getElementById(idElemento).value;
+            if(!val) return 0;
+            return parseInt(val.replace(/\D/g, ''), 10) || 0;
+        }
+
+        function setValorNumero(idElemento, valorNumero) {
+            if (valorNumero <= 0 || isNaN(valorNumero)) { document.getElementById(idElemento).value = ''; return; }
+            document.getElementById(idElemento).value = Math.round(valorNumero).toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+        }
+
+        function arredondarParaCima(valor, casas) {
+            let fator = Math.pow(10, -casas); 
+            return Math.ceil(valor / fator) * fator;
+        }
+
+        // --- 4. MOTOR DE PLANEJAMENTO ---
+        function somarMorte() {
+            let total = getValorNumerico('planPadraoVida') + getValorNumerico('planEducacao') + getValorNumerico('planInventario') + getValorNumerico('planFuneral');
+            setValorNumero('planMorteTotal', total);
+        }
+
+        function recalcularTudo() {
+            let prof = (document.getElementById('profissao').value || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            let rowIE = document.getElementById('rowInvEstendida');
+            let labelIE = document.getElementById('labelInvEstendida');
+            if (prof.includes('medic') || prof.includes('doutor')) {
+                rowIE.style.display = 'table-row'; labelIE.innerText = 'Invalidez para Médicos';
+            } else if (prof.includes('dentist') || prof.includes('odontolog')) {
+                rowIE.style.display = 'table-row'; labelIE.innerText = 'Invalidez para Dentistas';
+            } else {
+                rowIE.style.display = 'none'; document.getElementById('planInvEstendida').value = '';
+            }
+            
+            let possuiReserva = document.getElementById('possuiReservaEmerg').checked;
+            let rowIncap = document.getElementById('rowIncapTemp');
+            if(possuiReserva) {
+                 rowIncap.style.display = 'none'; document.getElementById('planIncapTemp').value = '';
+            } else {
+                 rowIncap.style.display = 'table-row';
+            }
+
+            let renda = getValorNumerico('dadosRenda'), despesa = getValorNumerico('dadosDespesa');
+            let patrimonio = getValorNumerico('dadosPatrimonio'), educacao = getValorNumerico('dadosEducacao'), previdencia = getValorNumerico('dadosPrevidencia');
+
+            let meses = parseInt(document.getElementById('mesesPadraoVida').value) || 0;
+            let inventarioReal = Math.max(0, (patrimonio * 0.15) - previdencia); 
+            
+            setValorNumero('dadosReserva', despesa * 6);
+            setValorNumero('dadosInventario', inventarioReal);
+            
+            setValorNumero('planPadraoVida', despesa * meses);
+            setValorNumero('planEducacao', educacao);
+            setValorNumero('planInventario', inventarioReal);
+            setValorNumero('planFuneral', 10000); 
+            
+            somarMorte(); 
+
+            if (renda > 0 || despesa > 0) {
+                setValorNumero('planDoencasGraves', Math.max(200000, arredondarParaCima(despesa * 24, -3)));
+                setValorNumero('planInvalidezPerm', 1000000); 
+                setValorNumero('planIPA', arredondarParaCima(renda * 200, -3));
+                if (!possuiReserva) setValorNumero('planIncapTemp', arredondarParaCima(renda * 12, -3)); 
+                setValorNumero('planDIT', Math.round(renda / 30));
+                setValorNumero('planCirurgia', (renda >= 40000) ? 100000 : 50000);
+                if (document.getElementById('rowInvEstendida').style.display !== 'none') setValorNumero('planInvEstendida', 500000); 
+            }
+        }
+
+        // --- 5. O DESAFIO DO TEMPO (ACORDEÃO E GRÁFICO LARGO) ---
+        let chartDesafio = null;
+        let faseAtualDesafio = 1;
+        const objMilhao = 1000000;
+        
+        function renderizarGraficoDesafio() {
+            const ctx = document.getElementById('graficoDesafio').getContext('2d');
+            if (chartDesafio) chartDesafio.destroy();
+            
+            // Lógica de idade
+            let idxImprevisto = (idadeGlobal >= 40) ? 1 : 2; 
+            
+            let labelsBase = ['Hoje', 'Ano 5', 'Ano 10', 'Ano 15', 'Ano 20', 'Ano 25', 'Ano 30'];
+            let labelsDin = [...labelsBase];
+            labelsDin[idxImprevisto] += ' (Imprevisto)';
+
+            const patBase = [50000, 150000, 350000, 600000, 800000, 950000, 1000000];
+            
+            chartDesafio = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsDin.slice(0, 2), 
+                    datasets: [
+                        { data: patBase.slice(0, 2), borderColor: '#00d2ff', backgroundColor: 'rgba(168, 199, 250, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#141418', pointRadius: 5 },
+                        { data: Array(7).fill(objMilhao), borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderDash: [10, 10], tension: 0, fill: false, pointRadius: 0 }
+                    ]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1D1B20', titleColor: '#fff' } }, 
+                    scales: { 
+                        x: { min: 0, max: 6, ticks: { color: '#A0A0A5' }, grid: { color: 'rgba(255,255,255,0.05)'} }, 
+                        y: { min: 0, max: 1200000, ticks: { color: '#A0A0A5', callback: function(value) { return 'R$ ' + value.toLocaleString('pt-BR'); } }, grid: { color: 'rgba(255,255,255,0.05)'} } 
+                    } 
+                }
+            });
+            
+            chartDesafio.idxImprevisto = idxImprevisto;
+            chartDesafio.labelsDin = labelsDin;
+            chartDesafio.patBase = patBase;
+            setFaseDesafio(1); // Força visualização da primeira fase ao renderizar
+        }
+
+        // Função do Acordeão de Fases do Gráfico
+        function setFaseDesafio(num) {
+            if (!chartDesafio) return;
+            faseAtualDesafio = num;
+            
+            // UI Update nos botões
+            for(let i=1; i<=5; i++) {
+                let elem = document.getElementById('fase'+i+'Desafio');
+                if(elem) elem.classList.remove('ativa');
+            }
+            if(document.getElementById('fase'+num+'Desafio')) document.getElementById('fase'+num+'Desafio').classList.add('ativa');
+
+            let idx = chartDesafio.idxImprevisto;
+            let patBase = chartDesafio.patBase;
+            let labelsDin = chartDesafio.labelsDin;
+
+            // Reset (Fase 1)
+            chartDesafio.data.labels = labelsDin.slice(0, 2);
+            chartDesafio.data.datasets = [
+                { data: patBase.slice(0, 2), borderColor: '#00d2ff', backgroundColor: 'rgba(168, 199, 250, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#141418', pointRadius: 5 },
+                { data: Array(7).fill(objMilhao), borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderDash: [10, 10], tension: 0, fill: false, pointRadius: 0 }
+            ];
+
+            if(num >= 2) {
+                chartDesafio.data.labels = labelsDin.slice(0, idx + 1);
+                chartDesafio.data.datasets[0].data = patBase.slice(0, idx + 1);
+                chartDesafio.data.datasets[0].pointRadius = Array(idx + 1).fill(5);
+            }
+            if(num >= 3) {
+                let radii = Array(idx + 1).fill(5); radii[idx] = 12;
+                let bgColors = Array(idx + 1).fill('#141418'); bgColors[idx] = '#FF4D4D';
+                chartDesafio.data.datasets[0].pointRadius = radii;
+                chartDesafio.data.datasets[0].pointBackgroundColor = bgColors;
+            }
+            if(num >= 4) {
+                chartDesafio.data.labels = labelsDin;
+                let dataSemSeguro = Array(7).fill(null);
+                for(let i=0; i<=idx; i++) dataSemSeguro[i] = patBase[i];
+                let valDrop = patBase[idx];
+                for(let i=idx+1; i<7; i++) { valDrop -= 200000; dataSemSeguro[i] = valDrop; }
+                
+                chartDesafio.data.datasets.push({
+                    data: dataSemSeguro,
+                    borderColor: '#FF4D4D', backgroundColor: 'rgba(255, 77, 77, 0.05)', borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#141418', pointRadius: 5
+                });
+            }
+            if(num === 5) {
+                let dataComSeguro = Array(7).fill(null);
+                for(let i=0; i<=idx; i++) dataComSeguro[i] = patBase[i];
+                let valGrow = patBase[idx];
+                for(let i=idx+1; i<7; i++) { valGrow += 150000; dataComSeguro[i] = Math.min(valGrow, objMilhao); }
+
+                chartDesafio.data.datasets.push({
+                    data: dataComSeguro,
+                    borderColor: '#00E676', backgroundColor: 'transparent', borderWidth: 4, tension: 0.4, fill: false, pointBackgroundColor: '#141418', pointRadius: 5
+                });
+            }
+            
+            chartDesafio.update();
+        }
+
+        atualizarPitch(); 
+    </script>
+</body>
+</html>

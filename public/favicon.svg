@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="#0A0A0B" />
+  <path d="M50 15L80 28V60C80 78 50 88 50 88C50 88 20 78 20 60V28L50 15Z" fill="none" stroke="#10b981" stroke-width="6" stroke-linejoin="round" />
+  <text x="50%" y="54%" font-family="system-ui, sans-serif" font-size="38" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="middle" letter-spacing="-2">S</text>
+  <circle cx="50" cy="74" r="4" fill="#10b981" />
+</svg>

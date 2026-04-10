@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+.env.*
+.vercel
+*.log
+build_error.txt
+tsc_error.txt
+vite_error.txt
+vite.config.ts.timestamp-*
+.DS_Store
