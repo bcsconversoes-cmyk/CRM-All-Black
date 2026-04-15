@@ -1,4 +1,6 @@
+/// <reference types="vite/client" />
 // src/utils/supabase.ts
+
 import { createClient } from '@supabase/supabase-js';
 
 // 1. Buscamos as chaves de ambiente (Padrão do Vite)

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Save, MessageCircle, History, Plus, Loader2, User, DollarSign, Calendar, Link2, Shield, Check, Send, Activity, AlertCircle, Trash2, MessageSquare, AlertTriangle, MonitorPlay } from 'lucide-react';
-import { Lead, Consultor, STAGES, Reuniao } from '../../types';
-import { checkFastTrack, getSnippets, formatMoney, parseDateInput, calcAge, calcIMC, formatPhone, getWhatsAppLink } from '../../utils/helpers';
+import { Lead, Consultor, STAGES, STAGE_SLAS, Reuniao } from '../../types';
+import { checkFastTrack, getSnippets, formatMoney, parseDateInput, calcAge, calcIMC, formatPhone, getWhatsAppLink, getCadenceFlow, getConsultantWhatsAppMessage } from '../../utils/helpers';
 import { supabase } from '../../utils/supabase';
 import StatusBadgeImported from '../ui/StatusBadge';
 import { LeadProfileForm } from './LeadProfileForm';
 import { FinancialDossier } from './FinancialDossier';
 import { ConsultantAssignment } from './ConsultantAssignment';
-import { ActionManager } from './ActionManager';
+import { ActionManager, WORKFLOW_ACTIONS } from './ActionManager';
 import { MeetingManager } from './MeetingManager';
 
 const SalesforceIcon = ({ className = 'w-4 h-4', color = '#00A1E0' }: { className?: string; color?: string }) => (
@@ -34,7 +34,7 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
     const [lead, setLead] = useState<Lead>(initialLead || defaultLead);
     const [saving, setSaving] = useState(false);
     const [savedSuccess, setSavedSuccess] = useState(false);
-    const [activeTab, setActiveTab] = useState<'perfil' | 'operacao'>('perfil');
+    const [activeTab, setActiveTab] = useState<'perfil' | 'operacao'>('operacao');
     const [isNewConsultor, setIsNewConsultor] = useState(false);
     const [novoConsultorNome, setNovoConsultorNome] = useState('');
     const [tempLinks, setTempLinks] = useState({ whatsapp: '', teams_link: '' });
@@ -49,7 +49,7 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
             setLead(defaultLead);
         }
         setHasUnsavedChanges(false);
-        setActiveTab('perfil');
+        setActiveTab('operacao');
     }, [initialLead]);
 
     useEffect(() => {
@@ -130,19 +130,24 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
         setHasUnsavedChanges(true);
     };
 
-    const getAcoesPossiveis = () => {
-        switch (lead.status) {
-            case 'Planejamento': return ['Aguardando informações', 'Agendar', 'Agendado', 'Pronto'];
-            case 'Fechamento': return ['Agendar', 'Agendado', 'No show'];
-            case 'Follow-up': return ['Agendar', 'Agendado', 'No show', 'Acompanhamento (Cliente)'];
-            case 'Pendência': return ['Aguardando documentação', 'Documentação Enviada', 'Em Análise'];
-            default: return [];
-        }
+    const handleResetSLA = () => {
+        const now = new Date();
+        const dateIso = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const nowBr = now.toLocaleString('pt-BR');
+        const safeHistorico = Array.isArray(lead.historico) ? lead.historico : [];
+        setLead(prev => ({
+            ...prev,
+            dataUltimoStatus: dateIso,
+            historico: [`[SLA ⏱️] Contador reiniciado manualmente em ${nowBr}`, ...safeHistorico]
+        }));
+        setHasUnsavedChanges(true);
     };
+
+    const getAcoesPossiveis = () => WORKFLOW_ACTIONS[lead.status] ?? [];
     const acoesDisponiveis = getAcoesPossiveis();
 
     const handleSmartContactWA = () => {
-        const isContatoCliente = ['Follow-up', 'Pendência', 'Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
+        const isContatoCliente = ['Follow-up', 'Em Análise', 'Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
 
         if (isContatoCliente) {
             const snippets = getSnippets(lead);
@@ -170,6 +175,9 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
         setSaving(true);
         try {
             const payload = { ...lead };
+            // Remover campos que não existem como coluna no Supabase
+            delete (payload as any).dataUltimoStatus;
+            delete (payload as any).rowIndex;
 
             if (isNew) {
                 const { data, error } = await supabase.from('leads').insert([payload]).select().single();
@@ -331,11 +339,12 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
 
             <div className="w-full max-w-6xl px-6 lg:px-10 py-10 space-y-8 pb-32">
                 <div className="flex gap-8 border-b border-white/5">
-                    {(['perfil', 'operacao'] as const).map(tab => (
+                    {(['operacao', 'perfil'] as const).map(tab => (
                         <button key={tab} onClick={() => setActiveTab(tab)} className={`pb-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === tab ? 'border-b-2 border-blue-500 text-blue-400' : 'text-slate-500'}`}>
-                            {tab === 'perfil' ? 'Perfil Completo' : 'Operação & Cadência'}
+                            {tab === 'operacao' ? 'Operação & Cadência' : 'Perfil Completo'}
                         </button>
                     ))}
+
                 </div>
 
                 {activeTab === 'perfil' ? (
@@ -351,11 +360,43 @@ export default function SideSheet({ lead: initialLead, isNew, onClose, leads, se
                             novoConsultorNome={novoConsultorNome} setNovoConsultorNome={setNovoConsultorNome}
                             tempLinks={tempLinks} setTempLinks={setTempLinks}
                             handleUpdateLead={handleUpdateLead} handleAdicionarConsultor={handleAdicionarConsultor}
-                            handleSaveConsultorLinks={() => alert('Links atualizados no perfil do consultor')}
-                            handleContactConsultantTeams={() => window.open(selectedConsultor?.teams_link)}
-                            handleContactConsultantWA={() => window.open(getWhatsAppLink(selectedConsultor?.whatsapp || '', 'Olá!'))}
+                            handleSaveConsultorLinks={async () => {
+                                if (!selectedConsultor?.id) return;
+                                try {
+                                    const { error } = await supabase.from('consultores_equipe').update(tempLinks).eq('id', selectedConsultor.id);
+                                    if (error) throw error;
+                                    setConsultores(consultores.map(c => c.id === selectedConsultor.id ? { ...c, ...tempLinks } : c));
+                                    alert("Links atualizados com sucesso!");
+                                } catch (err: any) { alert(`Erro ao salvar: ${err.message}`); }
+                            }}
+                            handleContactConsultantTeams={() => {
+                                if (!selectedConsultor?.teams_link) return;
+                                const msg = getConsultantWhatsAppMessage(lead);
+                                const now = new Date().toLocaleString('pt-BR');
+                                const newLog = `[CONTATO 👥] Acionado consultor via Teams (Status: ${lead.status}, Ação: ${lead.acao || 'Cobrança'}) em ${now}`;
+                                
+                                handleUpdateLead({ 
+                                    historico: [newLog, ...(lead.historico || [])] 
+                                });
+                                
+                                // Copiar mensagem para o clipboard solicitado pelo USER
+                                navigator.clipboard.writeText(msg);
+                                
+                                window.open(selectedConsultor.teams_link, '_blank');
+                            }}
+                            handleContactConsultantWA={() => {
+                                if (!selectedConsultor?.whatsapp) return;
+                                const msg = getConsultantWhatsAppMessage(lead);
+                                const now = new Date().toLocaleString('pt-BR');
+                                const newLog = `[CONTATO 👥] Acionado consultor via WhatsApp (Status: ${lead.status}, Ação: ${lead.acao || 'Cobrança'}) em ${now}`;
+                                
+                                handleUpdateLead({ 
+                                    historico: [newLog, ...(lead.historico || [])] 
+                                });
+                                window.open(getWhatsAppLink(selectedConsultor.whatsapp, msg), '_blank');
+                            }}
                         />
-                        <ActionManager lead={lead} handleUpdateLead={handleUpdateLead} acoesDisponiveis={acoesDisponiveis} />
+                        <ActionManager lead={lead} handleUpdateLead={handleUpdateLead} handleResetSLA={handleResetSLA} consultorWhatsapp={selectedConsultor?.whatsapp || ''} consultorTeamsLink={selectedConsultor?.teams_link || ''} />
                         <MeetingManager
                             lead={lead} novaReuniao={novaReuniao} setNovaReuniao={setNovaReuniao}
                             handlePautaChange={(p) => setNovaReuniao({ ...novaReuniao, titulo: p, data: new Date().toISOString().split('T')[0] })}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Layout,
     BarChart3,
@@ -15,6 +15,7 @@ import { LeadsTable } from './components/features/LeadsTable';
 import SideSheet from './components/features/SideSheet';
 import { TableSkeleton, DashboardSkeleton } from './components/ui/Skeletons';
 import { useLeads } from './hooks/useLeads';
+import { ConsultantManagerModal } from './components/features/ConsultantManagerModal';
 
 export default function App() {
     const {
@@ -26,17 +27,40 @@ export default function App() {
         isFetching,
         apiError,
         loadLeads,
-        changeLeadStatus
+        changeLeadStatus,
+        updateLeadInline
     } = useLeads();
 
     const [activeTab, setActiveTab] = useState<'leads' | 'dashboard'>('leads');
     const [globalSearch, setGlobalSearch] = useState('');
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [showNewLeadModal, setShowNewLeadModal] = useState(false);
+    const [showConsultantManager, setShowConsultantManager] = useState(false);
 
     useEffect(() => {
         loadLeads(false);
     }, [loadLeads]);
+
+    // Implementação de Atalhos Globais
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.altKey) {
+                if (e.key === '1') {
+                    setActiveTab('dashboard');
+                    e.preventDefault();
+                } else if (e.key === '2') {
+                    setActiveTab('leads');
+                    e.preventDefault();
+                } else if (e.key === '3') {
+                    setShowConsultantManager(prev => !prev);
+                    e.preventDefault();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // OTIMIZAÇÃO: Memoização do cálculo para evitar processamento inútil
     const totalPatrimonio = useMemo(() => {
@@ -58,6 +82,44 @@ export default function App() {
         if (lead.status === newStatus) return;
         await changeLeadStatus(lead, newStatus);
     };
+
+    // Ações rápidas do Dashboard — sem abrir o SideSheet
+    const handleDashboardQuickAction = useCallback(async (lead: Lead, action: 'contactado' | 'pronto' | 'adiar') => {
+        const now = new Date();
+        const nowBr = now.toLocaleString('pt-BR');
+        // Data no formato BR para o getDaysInStage parsear do historico
+        const nowDateBr = now.toLocaleDateString('pt-BR');
+
+        // "Adiar" = o SLA deve começar a contar a partir de amanhã
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowDateBr = tomorrow.toLocaleDateString('pt-BR');
+
+        // Tag especial lido pelo getDaysInStage para reiniciar o contador
+        const slaTag = action === 'adiar'
+            ? `[SLA ⏱️] Contador reiniciado manualmente em ${tomorrowDateBr}, 00:00:00`
+            : `[SLA ⏱️] Contador reiniciado manualmente em ${nowDateBr}, 00:00:00`;
+
+        const actionLabel: Record<string, string> = {
+            contactado: '[✅ DASHBOARD] Contactado — tarefa concluída',
+            pronto: '[✅ DASHBOARD] Planejamento marcado como Pronto',
+            adiar: '[⏰ DASHBOARD] Adiado 1 dia',
+        };
+
+        const updates: Partial<Lead> = {
+            historico: [
+                slaTag,
+                `${actionLabel[action]} em ${nowBr}`,
+                ...(lead.historico || []),
+            ],
+            // dataUltimoStatus só existe no estado local, não no banco (removido pelo leadService)
+            ...(action === 'contactado' && { dataUltimoStatus: nowDateBr }),
+            ...(action === 'pronto'     && { acao: 'Pronto', dataUltimoStatus: nowDateBr }),
+            ...(action === 'adiar'      && { dataUltimoStatus: tomorrowDateBr }),
+        };
+
+        await updateLeadInline(lead, updates);
+    }, [updateLeadInline]);
 
     return (
         <div className="min-h-screen text-white font-sans antialiased" style={{ background: 'var(--bg-deep)' }}>
@@ -82,8 +144,8 @@ export default function App() {
                     <div className="flex p-1 rounded-xl gap-0.5"
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                         {[
-                            { id: 'leads', label: 'Leads', Icon: Layout },
                             { id: 'dashboard', label: 'Dashboard', Icon: BarChart3 },
+                            { id: 'leads', label: 'Leads', Icon: Layout },
                         ].map(({ id, label, Icon }) => (
                             <button
                                 key={id}
@@ -98,6 +160,16 @@ export default function App() {
                                 {label}
                             </button>
                         ))}
+                        
+                        <div className="w-px h-4 bg-white/5 mx-1 self-center" />
+
+                        <button
+                            onClick={() => setShowConsultantManager(true)}
+                            className="px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 bg-transparent text-[#64748b] border border-transparent hover:bg-white/[0.03] hover:text-white"
+                        >
+                            <User className="w-3.5 h-3.5" />
+                            Equipe
+                        </button>
                     </div>
                 </div>
 
@@ -177,7 +249,7 @@ export default function App() {
             {loading ? (
                 activeTab === 'dashboard' ? <DashboardSkeleton /> : <TableSkeleton />
             ) : activeTab === 'dashboard' ? (
-                <Dashboard leads={leads} openLead={setSelectedLead} />
+                <Dashboard leads={leads} openLead={setSelectedLead} onQuickAction={handleDashboardQuickAction} />
             ) : (
                 <LeadsTable
                     leads={filteredLeads}
@@ -198,6 +270,14 @@ export default function App() {
                     setConsultores={setConsultores}
                 />
             )}
+
+            <ConsultantManagerModal 
+                isOpen={showConsultantManager}
+                onClose={() => setShowConsultantManager(false)}
+                consultores={consultores}
+                leads={leads}
+                onUpdate={() => loadLeads(true)}
+            />
         </div>
     );
 }

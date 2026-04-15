@@ -37,6 +37,7 @@ export function useLeads() {
                 criadoEm:           l.criadoEm          || l.criadoem           || '',
                 dataAcao:           l.dataAcao          || l.dataacao           || '',
                 percentualRenda:    l.percentualRenda   ?? l.percentualrenda    ?? null,
+                dataUltimoStatus:   l.dataUltimoStatus  || l.data_ultimo_status || '',
                 historico: typeof l.historico === 'string' ? JSON.parse(l.historico) : (l.historico || []),
                 reunioes:  typeof l.reunioes  === 'string' ? JSON.parse(l.reunioes)  : (l.reunioes  || [])
             }));
@@ -48,7 +49,7 @@ export function useLeads() {
                     'Planejamento',
                     'Fechamento',
                     'Follow-up',
-                    'Pendência'
+                    'Em Análise'
                 ];
                 const indexA = ordemStatus.indexOf(a.status || '');
                 const indexB = ordemStatus.indexOf(b.status || '');
@@ -64,7 +65,7 @@ export function useLeads() {
 
             setLeads(sorted);
 
-            const consultoresData = await leadService.getConsultores();
+            const consultoresData = await leadService.getAllConsultores();
             setConsultores(consultoresData);
 
         } catch (err: any) {
@@ -92,5 +93,21 @@ export function useLeads() {
         }
     };
 
-    return { leads, setLeads, consultores, setConsultores, loading, isFetching, apiError, loadLeads, changeLeadStatus };
+    /**
+     * Atualiza campos arbitrários de um lead com optimistic UI e rollback automático.
+     * Usado pelo dashboard para ações rápidas inline sem abrir o SideSheet.
+     */
+    const updateLeadInline = async (lead: Lead, updates: Partial<Lead>) => {
+        const snapshot = { ...lead };
+        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, ...updates } : l));
+        try {
+            await leadService.updateLead(lead.id, updates);
+        } catch (err) {
+            setLeads(prev => prev.map(l => l.id === lead.id ? snapshot : l));
+            console.error('Erro ao atualizar lead inline:', err);
+            throw err;
+        }
+    };
+
+    return { leads, setLeads, consultores, setConsultores, loading, isFetching, apiError, loadLeads, changeLeadStatus, updateLeadInline };
 }

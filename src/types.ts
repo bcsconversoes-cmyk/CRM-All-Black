@@ -55,14 +55,16 @@ export interface Lead {
     percentualRenda?: number;
     acao?: string;
     dataAcao?: string;
+    sla?: number;
 }
+
 
 export const STAGES = [
     'Lead',
     'Planejamento',
     'Fechamento',
     'Follow-up',
-    'Pendência',
+    'Em Análise',
     'Ganho',
     'Perdido',
     'Cancelou'
@@ -70,10 +72,10 @@ export const STAGES = [
 
 export const STAGE_SLAS: Record<string, number> = {
     'Lead': 3,
-    'Planejamento': 5,
-    'Fechamento': 10,
+    'Planejamento': 7,
+    'Fechamento': 7,
     'Follow-up': 5,
-    'Pendência': 3,
+    'Em Análise': 7,
     'Ganho': 0,
     'Perdido': 0,
     'Cancelou': 0

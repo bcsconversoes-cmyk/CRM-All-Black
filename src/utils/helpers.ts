@@ -77,8 +77,24 @@ export const getLastUpdateDate = (lead: Lead) => {
 };
 
 export const getDaysInStage = (lead: Lead) => {
+  // 1. Prioridade: tag de reinício de SLA gravado no historico
+  const slaResetLog = lead.historico?.find(log => log.includes('[SLA') && log.includes('reiniciado'));
+  if (slaResetLog) {
+    // Formato: "[SLA ⏱️] Contador reiniciado manualmente em DD/MM/AAAA, HH:MM:SS"
+    const match = slaResetLog.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (match) {
+      const [d, m, y] = match[1].split('/');
+      const resetDate = new Date(Number(y), Number(m) - 1, Number(d));
+      resetDate.setHours(0, 0, 0, 0);
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      return Math.max(0, Math.floor((now.getTime() - resetDate.getTime()) / 86400000));
+    }
+  }
+
+  // 2. Campo dataUltimoStatus (se preenchido localmente)
   let dateStr = lead.dataUltimoStatus;
 
+  // 3. Fallback: última mudança de status no histórico
   if (!dateStr) {
     const lastLog = lead.historico?.find(log => log.includes('→'));
     dateStr = lastLog ? (lastLog.match(/em (\d{1,2}\/\d{1,2}\/\d{4})/) || [])[1] : lead.criadoEm;
@@ -110,7 +126,9 @@ export const checkSLA = (lead: Lead) => {
   const days = getDaysInStage(lead);
   const maxDays = STAGE_SLAS[lead.status];
   if (maxDays === undefined) return { isBreached: false, days, maxDays: 0 };
-  return { isBreached: days > maxDays, days, maxDays };
+  // Se o cliente tem uma data de agendamento, o SLA fica protegido (não fica vermelho)
+  const isProtected = !!(lead.dataAcao && lead.dataAcao.trim());
+  return { isBreached: !isProtected && days > maxDays, days, maxDays };
 };
 
 export const checkFastTrack = (lead: Lead): string => {
@@ -119,27 +137,97 @@ export const checkFastTrack = (lead: Lead): string => {
   return lead.status;
 };
 
+export const getClientWhatsAppMessage = (lead: Lead) => {
+  const cliente = (lead?.nome || 'o cliente').split(' ')[0];
+  const snippets = getSnippets(lead);
+  
+  // Mapeamento de mensagens por combinação de Status e Ação
+  if (lead.status === 'Follow-up') {
+    if (lead.acao === 'Agendar') return `Olá ${cliente}, tudo bem? Notei que avançamos na apresentação e gostaria de ver se conseguimos agendar o fechamento. Qual horário fica melhor para você?`;
+    if (lead.acao === 'No show') return `Olá ${cliente}, senti sua falta na nossa reunião. Aconteceu algum imprevisto? Vamos remarcar para não perdermos o timing das condições que estruturamos?`;
+    if (lead.acao === 'Agendado') return `Olá ${cliente}, passando para confirmar nossa reunião que ficou agendada. Recomendamos um ambiente tranquilo para passarmos pelos detalhes. Até logo!`;
+  }
+  
+  if (lead.status === 'Em Análise') {
+    if (lead.acao === 'Aguardando documentação') return `Olá ${cliente}, tudo bem? Para darmos prosseguimento à emissão, a seguradora solicitou alguns documentos complementares. Consegue me enviar hoje?`;
+    if (lead.acao === 'Documentação enviada') return `Olá ${cliente}, seus documentos já estão com a seguradora. Estou acompanhando de perto e te aviso assim que tivermos o retorno.`;
+    if (lead.acao === 'Pendência') return `Olá ${cliente}, tudo bem? Surgiu uma pendência no processo da sua apólice que precisa ser resolvida para darmos andamento. Consigo te ligar para explicar os detalhes?`;
+  }
+  
+  if (lead.status === 'Ganho') {
+    return snippets.apoliceCliente;
+  }
+
+  // Fallback para mensagens genéricas do pipeline
+  if (lead.acao === 'Acompanhamento (Cliente)') return snippets.msg02;
+  
+  return `Olá ${cliente}, como você está? Gostaria de dar continuidade ao nosso planejamento financeiro. Podemos falar?`;
+};
+
+export const getConsultantWhatsAppMessage = (lead: Lead) => {
+  const consultor = lead?.consultor ? lead.consultor.split(' ')[0] : 'Consultor';
+  const cliente = (lead?.nome || 'o cliente').split(' ')[0];
+  const snippets = getSnippets(lead);
+  const cadence = getCadenceFlow(lead);
+
+  // Caso Ganho: mensagem específica de apólice para o consultor
+  if (lead.status === 'Ganho') {
+    return snippets.apoliceConsultor;
+  }
+  
+  let msg = `Fala ${consultor}, tudo bem? Passando para cobrar o lead ${cliente}.\n\n📌 Status: ${lead.status}\n⚡ Ação: ${lead.acao || 'A definir'}`;
+  
+  if (lead.dataAcao) {
+    msg += `\n📅 Data Agendada: ${formatDate(lead.dataAcao)}`;
+  }
+  
+  msg += `\n\n💡 Sugestão: ${cadence.currentStep.msg}`;
+  
+  return msg;
+};
+
+
 export const getSnippets = (lead: Lead) => {
   const consultor = lead?.consultor ? lead.consultor.split(' ')[0] : 'Consultor';
   const cliente = (lead?.nome || 'o cliente').split(' ')[0];
+  const nomeCompleto = lead?.nome || 'Cliente';
 
   return {
-    formLead: `Fala ${consultor}, tudo bem? Vi que temos uma nova oportunidade mapeada (${cliente}). Consegue me passar as infos iniciais pra gente dar start na esteira?`,
-    cobrancaInfos: `${consultor}, beleza? Para eu desenhar um planejamento impecável para o ${cliente}, ainda faltam alguns dados. Consegue dar um toque nele hoje pra não esfriarmos o lead?`,
+    // ── Mensagens de pipeline ────────────────────────────────────────────────
+    formLead:           `Fala ${consultor}, tudo bem? Vi que temos uma nova oportunidade mapeada (${cliente}). Consegue me passar as infos iniciais pra gente dar start na esteira?`,
+    cobrancaInfos:      `${consultor}, beleza? Para eu desenhar um planejamento impecável para o ${cliente}, ainda faltam alguns dados. Consegue dar um toque nele hoje pra não esfriarmos o lead?`,
     cobrarPlanejamento: `Fala, ${consultor}! O estudo do ${cliente} já tá no gatilho aqui comigo. Já conseguiu alinhar com ele a data para a nossa call de apresentação?`,
-    cobrarFechamento: `${consultor}, planejamento entregue! Qual o status do agendamento para o fechamento com o ${cliente}? Bora trazer esse contrato pra casa!`,
-    followUpConsultor: `${consultor}, passando pra fazer um follow-up sobre o ${cliente}. Como estamos de próximos passos? Ele retornou?`,
-    pendenciaDocs: `Olá ${cliente}, tudo bem? A seguradora solicitou um pequeno complemento na documentação para a emissão da sua apólice. Pode me enviar [DOCUMENTO_AQUI] quando tiver um tempinho?`,
+    cobrarFechamento:   `${consultor}, planejamento entregue! Qual o status do agendamento para o fechamento com o ${cliente}? Bora trazer esse contrato pra casa!`,
+    followUpConsultor:  `${consultor}, passando pra fazer um follow-up sobre o ${cliente}. Como estamos de próximos passos? Ele retornou?`,
+    pendenciaDocs:      `Olá ${cliente}, tudo bem? A seguradora solicitou um pequeno complemento na documentação para a emissão da sua apólice. Pode me enviar [DOCUMENTO_AQUI] quando tiver um tempinho?`,
     confirmacaoReuniao: `Olá ${cliente}, tudo bem? Passando só pra confirmar nossa reunião. Recomendo que separe uns 45 minutinhos num ambiente tranquilo para passarmos pelos cenários. Até lá!`,
-    noShowRemarcacao: `Olá ${cliente}, tudo bem? Tentei te ligar para nossa call mas acho que rolou algum imprevisto. Como as condições que eu estruturei têm um prazo, qual o melhor horário pra gente reagendar?`,
+    noShowRemarcacao:   `Olá ${cliente}, tudo bem? Tentei te ligar para nossa call mas acho que rolou algum imprevisto. Como as condições que eu estruturei têm um prazo, qual o melhor horário pra gente reagendar?`,
     ganho: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
-    
-    // Novas mensagens profissionais de Follow-up
+
+    // ── Mensagens ao CLIENTE com títulos claros ──────────────────────────────
+    /** MSG 01 — Apresentação */
+    msg_apresentacao: `Breno Schmidt, Portfel.\n${nomeCompleto}`,
+
+    /** MSG 02 — Proposta Detalhada */
     msg01: `${cliente}, tudo bem?\n\nAcabei de te enviar a proposta detalhada que conversamos. Estou à disposição para sanar quaisquer dúvidas que você ainda tenha ou fazer os ajustes que você julgar necessário, combinado?`,
+
+    /** MSG 03 — Acompanhamento 1 */
     msg02: `${cliente}, tudo bem?\n\nNotei que ainda não avançamos na nossa conversa e quero garantir que você tenha todas as informações para tomar a melhor decisão.\n\nPodemos marcar um horário para revisar juntos e ajustar o que for necessário ou, caso precise de mais tempo para pensar, é só me avisar para que eu saiba como seguir daqui em diante.\n\nO que me diz?`,
+
+    /** MSG 04 — Acompanhamento 2 */
     msg03: `${cliente}, sei que essa decisão é importante e merece reflexão.\n\nSe precisar de mais alguma informação ou quiser conversar novamente para ter certeza de que está fazendo a melhor escolha, conte comigo!\n\nCaso prefira deixar para outro momento, está tudo certo também. Apenas me fale para que eu possa te acompanhar da melhor forma possível.\n\nComo gostaria de seguir?`,
+
+    /** MSG 05 — Prioridade Atual */
     msg04: `${cliente}, tudo certo?\n\nComo você não me deu meu retorno, estou partindo do princípio que, por agora, o seguro não é prioridade pra você. E está tudo bem!\n\nVou dar baixa aqui no seu nome para não ficar te incomodando, mas espero que a gente se encontre numa próxima oportunidade.\n\nGrande abraço!`,
-    msg05: `${cliente}, tudo certo? Imagino que você esteja focado em outras prioridades no momento.\n\nComo não tive nenhum retorno até aqui, devo entender o silêncio como um "não é minha prioridade por enquanto" e considerar nosso papo encerrado? Se for o caso, sem problemas. Eu tiro o seu nome aqui da minha lista de acompanhamento.\n\nSe for só correria, me chama aqui...`
+
+    /** MSG 06 — Encerrar Contato */
+    msg05: `${cliente}, tudo certo? Imagino que você esteja focado em outras prioridades no momento.\n\nComo não tive nenhum retorno até aqui, devo entender o silêncio como um "não é minha prioridade por enquanto" e considerar nosso papo encerrado? Se for o caso, sem problemas. Eu tiro o seu nome aqui da minha lista de acompanhamento.\n\nSe for só correria, me chama aqui...`,
+
+    /** MSG — Apólice Emitida (para o CLIENTE) */
+    apoliceCliente: `${nomeCompleto}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
+
+    /** MSG — Apólice Emitida (para o CONSULTOR) */
+    apoliceConsultor: `Fala, ${consultor}! Tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Apólice emitida e enviada ao cliente\n✅ Contrato ativado no Salesforce\n✅ Apólice anexada ao contrato\n\nQualquer dúvida é só chamar. Bora pra cima! 🚀`,
   };
 };
 
@@ -147,7 +235,7 @@ export const getCadenceFlow = (lead: Lead) => {
   const days = getDaysInStage(lead);
   const snippets = getSnippets(lead);
 
-  const isContatoCliente = ['Pendência', 'Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
+  const isContatoCliente = ['Em Análise', 'Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
   const targetType = isContatoCliente ? 'cliente' : 'consultor';
 
   const flows: Record<string, any[]> = {
@@ -163,7 +251,7 @@ export const getCadenceFlow = (lead: Lead) => {
     'Follow-up': [
       { day: 0, title: 'Pós-Apresentação', action: 'Acionar Consultor', msg: snippets.followUpConsultor },
     ],
-    'Pendência': [
+    'Em Análise': [
       { day: 0, title: 'Exigência', action: 'Solicitar Docs (Cliente)', msg: snippets.pendenciaDocs }
     ],
     'Ganho': [
