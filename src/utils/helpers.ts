@@ -14,6 +14,28 @@ export const getVal = (obj: any, possibleKeys: string[]) => {
   return '';
 };
 
+export const getBusinessDays = (startDate: Date, endDate: Date) => {
+  let count = 0;
+  const curDate = new Date(startDate);
+  
+  // Normalizar horário para evitar problemas de fuso
+  curDate.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  if (curDate > end) return 0; // se startDate estiver no futuro, 0 dias de atraso
+
+  while (curDate < end) {
+    curDate.setDate(curDate.getDate() + 1);
+    const dayOfWeek = curDate.getDay();
+    // Excluir domingos (0) e sábados (6)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
+    }
+  }
+  return count;
+};
+
 export const formatMoney = (v: number | string | null | undefined) => {
   if (v === null || v === undefined || v === '') return "";
   let value = typeof v === 'string' ? parseInt(v.replace(/\D/g, '')) : v;
@@ -87,7 +109,7 @@ export const getDaysInStage = (lead: Lead) => {
       const resetDate = new Date(Number(y), Number(m) - 1, Number(d));
       resetDate.setHours(0, 0, 0, 0);
       const now = new Date(); now.setHours(0, 0, 0, 0);
-      return Math.max(0, Math.floor((now.getTime() - resetDate.getTime()) / 86400000));
+      return getBusinessDays(resetDate, now);
     }
   }
 
@@ -117,17 +139,44 @@ export const getDaysInStage = (lead: Lead) => {
     }
     targetDate.setHours(0, 0, 0, 0);
 
-    const diffTime = now.getTime() - targetDate.getTime();
-    return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+    return getBusinessDays(targetDate, now);
   } catch { return 0; }
 };
 
 export const checkSLA = (lead: Lead) => {
   const days = getDaysInStage(lead);
   const maxDays = STAGE_SLAS[lead.status];
+  
   if (maxDays === undefined) return { isBreached: false, days, maxDays: 0 };
-  // Se o cliente tem uma data de agendamento, o SLA fica protegido (não fica vermelho)
-  const isProtected = !!(lead.dataAcao && lead.dataAcao.trim());
+  
+  // Se o cliente tem uma data de agendamento validamos se ela já estourou
+  let isProtected = false;
+  if (lead.dataAcao && lead.dataAcao.trim()) {
+    try {
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      let acaoDate: Date;
+      if (String(lead.dataAcao).includes('T') || String(lead.dataAcao).includes('-')) {
+        acaoDate = new Date(lead.dataAcao);
+      } else {
+        const parts = String(lead.dataAcao).split('/');
+        if (parts.length === 3) {
+          acaoDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        } else {
+          acaoDate = new Date(); // fallback if strange format
+        }
+      }
+      acaoDate.setHours(0, 0, 0, 0);
+      
+      // SLA é protegido SE a dataAcao ainda for HOJE ou no FUTURO.
+      if (acaoDate >= now) {
+        isProtected = true;
+      }
+    } catch(e) {
+      isProtected = false; // Em falha de parse, segue regra padrão
+    }
+  }
+
+  // Override para follow-up: se "dataAcao" estiver vencido, o SLA quebrou
   return { isBreached: !isProtected && days > maxDays, days, maxDays };
 };
 
@@ -155,6 +204,7 @@ export const getClientWhatsAppMessage = (lead: Lead) => {
   }
   
   if (lead.status === 'Ganho') {
+    if (lead.acao === 'Criar Lead') return snippets.boasVindas;
     return snippets.apoliceCliente;
   }
 
@@ -170,8 +220,9 @@ export const getConsultantWhatsAppMessage = (lead: Lead) => {
   const snippets = getSnippets(lead);
   const cadence = getCadenceFlow(lead);
 
-  // Caso Ganho: mensagem específica de apólice para o consultor
+  // Caso Ganho: mensagens específicas para o consultor
   if (lead.status === 'Ganho') {
+    if (lead.acao === 'Criar Lead') return snippets.criarLeadConsultor;
     return snippets.apoliceConsultor;
   }
   
@@ -195,9 +246,9 @@ export const getSnippets = (lead: Lead) => {
   return {
     // ── Mensagens de pipeline ────────────────────────────────────────────────
     formLead:           `Fala ${consultor}, tudo bem? Vi que temos uma nova oportunidade mapeada (${cliente}). Consegue me passar as infos iniciais pra gente dar start na esteira?`,
-    cobrancaInfos:      `${consultor}, beleza? Para eu desenhar um planejamento impecável para o ${cliente}, ainda faltam alguns dados. Consegue dar um toque nele hoje pra não esfriarmos o lead?`,
+    cobrancaInfos:      `Fala ${consultor}! Precisamos alinhar os detalhes do lead ${cliente}. Vamos marcar 15 minutinhos para estruturarmos o planejamento do seguro e garantir que a estratégia atenda 100% às necessidades dele?`,
     cobrarPlanejamento: `Fala, ${consultor}! O estudo do ${cliente} já tá no gatilho aqui comigo. Já conseguiu alinhar com ele a data para a nossa call de apresentação?`,
-    cobrarFechamento:   `${consultor}, planejamento entregue! Qual o status do agendamento para o fechamento com o ${cliente}? Bora trazer esse contrato pra casa!`,
+    cobrarFechamento:   `${consultor}, o planejamento do ${cliente} ficou excelente! Quando conseguimos apresentar pra ele? Precisamos sanar as dúvidas finais e já partir para a formalização da proposta.`,
     followUpConsultor:  `${consultor}, passando pra fazer um follow-up sobre o ${cliente}. Como estamos de próximos passos? Ele retornou?`,
     pendenciaDocs:      `Olá ${cliente}, tudo bem? A seguradora solicitou um pequeno complemento na documentação para a emissão da sua apólice. Pode me enviar [DOCUMENTO_AQUI] quando tiver um tempinho?`,
     confirmacaoReuniao: `Olá ${cliente}, tudo bem? Passando só pra confirmar nossa reunião. Recomendo que separe uns 45 minutinhos num ambiente tranquilo para passarmos pelos cenários. Até lá!`,
@@ -224,10 +275,16 @@ export const getSnippets = (lead: Lead) => {
     msg05: `${cliente}, tudo certo? Imagino que você esteja focado em outras prioridades no momento.\n\nComo não tive nenhum retorno até aqui, devo entender o silêncio como um "não é minha prioridade por enquanto" e considerar nosso papo encerrado? Se for o caso, sem problemas. Eu tiro o seu nome aqui da minha lista de acompanhamento.\n\nSe for só correria, me chama aqui...`,
 
     /** MSG — Apólice Emitida (para o CLIENTE) */
-    apoliceCliente: `${nomeCompleto}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
+    apoliceCliente: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
 
     /** MSG — Apólice Emitida (para o CONSULTOR) */
-    apoliceConsultor: `Fala, ${consultor}! Tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Apólice emitida e enviada ao cliente\n✅ Contrato ativado no Salesforce\n✅ Apólice anexada ao contrato\n\nQualquer dúvida é só chamar. Bora pra cima! 🚀`,
+    apoliceConsultor: `${consultor}, tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Apólices emitidas e enviadas ao cliente\n✅ Contratos ativados no Salesforce\n✅ Apólices anexadas aos contratos\n\nQualquer dúvida é só chamar. Bora pra cima! 🚀`,
+
+    /** Boas-vindas (para CLIENTE ao Criar Lead) */
+    boasVindas: `Olá ${cliente}! Seja muito bem-vindo ao ecossistema Portfel. É uma honra ter você conosco. Agora você conta com um acompanhamento contínuo para garantir que sua blindagem financeira esteja sempre atualizada. Conte comigo!`,
+
+    /** Criar Lead (para CONSULTOR) */
+    criarLeadConsultor: `Parabéns pelo fechamento do ${cliente}, ${consultor}! 🚀 Negócio concluído. Agora, vamos rodar o processo de indicações ou abrir um novo lead de revisão para mantermos a roda girando?`,
   };
 };
 

@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, User, MessageCircle, MessageSquare, Power, Save, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { X, Search, User, MessageCircle, MessageSquare, Power, Save, AlertCircle, RefreshCw, Trash2, Check } from 'lucide-react';
+
 
 import { Consultor, Lead } from '../../types';
-import { formatPhone, getWhatsAppLink, formatDate } from '../../utils/helpers';
+import { formatPhone, getWhatsAppLink, formatDate, checkSLA } from '../../utils/helpers';
+import { toast } from '../../utils/toast';
 import { updateConsultor, deleteConsultor } from '../../services/leadService';
-
-
-
 interface Props {
     isOpen: boolean;
     onClose: () => void;
@@ -88,20 +87,19 @@ export const ConsultantManagerModal: React.FC<Props> = ({ isOpen, onClose, consu
     };
 
     const handleSendWhatsApp = (consultor: Consultor) => {
-        if (!consultor.whatsapp) return alert("WhatsApp não cadastrado para este consultor.");
+        if (!consultor.whatsapp) return toast.error("WhatsApp não cadastrado para este consultor.");
         const msg = generateSummaryMessage(consultor.nome);
-        if (!msg) return alert("Este consultor não possui leads ativos no momento.");
+        if (!msg) return toast.info("Este consultor não possui leads ativos no momento.");
         window.open(getWhatsAppLink(consultor.whatsapp, msg), '_blank');
     };
 
     const handleSendTeams = (consultor: Consultor) => {
-        if (!consultor.teams_link) return alert("Link do Teams não cadastrado para este consultor.");
+        if (!consultor.teams_link) return toast.error("Link do Teams não cadastrado para este consultor.");
         const msg = generateSummaryMessage(consultor.nome);
-        if (!msg) return alert("Este consultor não possui leads ativos no momento.");
+        if (!msg) return toast.info("Este consultor não possui leads ativos no momento.");
         
         // Copiar para o clipboard pois o Teams não suporta pre-fill via URL de forma confiável
         navigator.clipboard.writeText(msg);
-        alert("Resumo copiado! Cole no chat que será aberto.");
         window.open(consultor.teams_link, '_blank');
     };
 
@@ -258,25 +256,49 @@ export const ConsultantManagerModal: React.FC<Props> = ({ isOpen, onClose, consu
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            {/* Badge de Pendências */}
+                                            {(() => {
+                                                const pendencias = leads.filter(l => 
+                                                    l.consultor === c.nome && 
+                                                    checkSLA(l).isBreached && 
+                                                    !['Ganho', 'Perdido', 'Cancelou'].includes(l.status)
+                                                ).length;
+
+                                                if (pendencias > 0) {
+                                                    return (
+                                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 mr-2" title={`${pendencias} leads com SLA atrasado`}>
+                                                            <AlertCircle size={14} />
+                                                            <span className="text-[10px] font-black">{pendencias}</span>
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/50 border border-white/5 text-slate-500 mr-2" title="Nenhuma pendência de SLA">
+                                                            <Check size={14} />
+                                                            <span className="text-[10px] font-black">0</span>
+                                                        </div>
+                                                    );
+                                                }
+                                            })()}
+
                                             <div className="flex items-center gap-1.5 border-r border-white/5 pr-3 mr-1">
-                                                {c.whatsapp && (
-                                                    <button 
-                                                        onClick={() => handleSendWhatsApp(c)}
-                                                        className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/10 hover:border-emerald-500/30"
-                                                        title="Enviar resumo via WhatsApp"
-                                                    >
-                                                        <MessageCircle size={14} />
-                                                    </button>
-                                                )}
-                                                {c.teams_link && (
-                                                    <button 
-                                                        onClick={() => handleSendTeams(c)}
-                                                        className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-500/10 hover:border-indigo-500/30"
-                                                        title="Enviar resumo via Teams"
-                                                    >
-                                                        <MessageSquare size={14} />
-                                                    </button>
-                                                )}
+                                                <button 
+                                                    onClick={() => c.whatsapp ? handleSendWhatsApp(c) : null}
+                                                    disabled={!c.whatsapp}
+                                                    className={`p-2.5 rounded-xl transition-all border ${c.whatsapp ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white border-emerald-500/10 hover:border-emerald-500/30 cursor-pointer' : 'bg-white/5 text-slate-600 border-white/5 opacity-50 cursor-not-allowed'}`}
+                                                    title={c.whatsapp ? "Enviar resumo via WhatsApp" : "WhatsApp não configurado"}
+                                                >
+                                                    <MessageCircle size={14} />
+                                                </button>
+                                                
+                                                <button 
+                                                    onClick={() => c.teams_link ? handleSendTeams(c) : null}
+                                                    disabled={!c.teams_link}
+                                                    className={`p-2.5 rounded-xl transition-all border ${c.teams_link ? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-600 hover:text-white border-indigo-500/10 hover:border-indigo-500/30 cursor-pointer' : 'bg-white/5 text-slate-600 border-white/5 opacity-50 cursor-not-allowed'}`}
+                                                    title={c.teams_link ? "Enviar resumo via Teams" : "Teams não configurado"}
+                                                >
+                                                    <MessageSquare size={14} />
+                                                </button>
                                             </div>
 
                                             <button 

@@ -64,7 +64,7 @@ const TableSkeleton = () => (
 
 export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = false, globalSearch, setSelectedLead, updateLeadStatus }: LeadsTableProps) {
     const [filters, setFilters] = useState<FilterState>({
-        status: STAGES.filter(s => !['Ganho', 'Perdido', 'Cancelou'].includes(s)),
+        status: [],
         nome: '',
         consultor: '',
         renda: ''
@@ -138,17 +138,81 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
         }));
     };
 
-    const openWaModal = useCallback((lead: Lead, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setWaModalLead(lead);
-        const snippets = getSnippets(lead);
-        setWaMessage(Object.values(snippets)[0] || '');
-    }, []);
+    const handleOpenWA = (l: Lead) => {
+        setWaModalLead(l);
+        setWaMessage(getSnippets(l).followUpConsultor || '');
+    };
 
-    const sendWhatsApp = () => {
+    const handleSendWA = () => {
         if (!waModalLead) return;
         window.open(getWhatsAppLink(waModalLead.celular || '', waMessage), '_blank');
         setWaModalLead(null);
+    };
+
+    // Sub-componente de Card para Mobile
+    const LeadCard = ({ lead }: { lead: Lead }) => {
+        const days = getDaysInStage(lead);
+        const slaMax = STAGE_SLAS[lead.status] || 1;
+        const isBreached = days > slaMax;
+        
+        return (
+            <div 
+                onClick={() => setSelectedLead(lead)}
+                className="glass-card mb-3 p-4 bg-white/5 border border-white/5 active:scale-[0.98] transition-all"
+            >
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-[12px] font-black text-slate-300">
+                            {(lead.nome || 'CL').split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                            <h3 className="text-[13px] font-bold text-slate-100">{lead.nome || 'Sem Nome'}</h3>
+                            <p className="text-[10px] text-slate-500">{lead.profissao || 'Sem profissão'}</p>
+                        </div>
+                    </div>
+                    <StatusBadge status={lead.status || 'Lead'} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Consultor</span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                            <span className="text-[10px] font-bold text-slate-300 truncate">{lead.consultor || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-1 items-end text-right">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Tempo na Etapa</span>
+                        <div className="flex items-center gap-1.5">
+                            <span className={`text-[10px] font-bold ${isBreached ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                {days}d / {slaMax}d
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-3 border-t border-white/5">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleOpenWA(lead); }}
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                    >
+                        <MessageCircle size={14} />
+                        WhatsApp
+                    </button>
+                    {lead.salesforceUrl && (
+                        <a 
+                            href={lead.salesforceUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center"
+                        >
+                            <SalesforceIcon color="#60a5fa" className="w-4 h-4" />
+                        </a>
+                    )}
+                </div>
+            </div>
+        );
     };
 
     useEffect(() => {
@@ -174,7 +238,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
     const thLbl = { fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' as const, letterSpacing: '0.15em', color: '#cbd5e1', cursor: 'pointer' };
 
     return (
-        <main className="p-4 lg:p-6 max-w-[1600px] mx-auto min-h-screen">
+        <main className="p-2 lg:p-6 max-w-[1600px] mx-auto min-h-screen">
             {waModalLead && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center" style={{ background: 'rgba(2,6,15,0.85)', backdropFilter: 'blur(16px)' }} onClick={() => setWaModalLead(null)}>
                     <div className="w-full max-w-lg p-8 rounded-3xl animate-in" style={{ background: 'rgba(8,15,30,0.95)', border: '1px solid rgba(16,185,129,0.25)', boxShadow: '0 0 60px rgba(16,185,129,0.15)', backdropFilter: 'blur(30px)' }} onClick={e => e.stopPropagation()}>
@@ -195,14 +259,45 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                             ))}
                         </div>
                         <textarea className="w-full text-[13px] min-h-[140px] rounded-2xl resize-none outline-none p-5 leading-relaxed" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontFamily: 'inherit' }} value={waMessage} onChange={e => setWaMessage(e.target.value)} />
-                        <button onClick={sendWhatsApp} className="mt-5 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.75), rgba(5,150,105,0.80))', color: 'white', boxShadow: '0 0 24px rgba(16,185,129,0.30)', border: '1px solid rgba(16,185,129,0.30)' }}><Send size={15} /> Disparar Mensagem</button>
+                        <button onClick={handleSendWA} className="mt-5 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.75), rgba(5,150,105,0.80))', color: 'white', boxShadow: '0 0 24px rgba(16,185,129,0.30)', border: '1px solid rgba(16,185,129,0.30)' }}><Send size={15} /> Disparar Mensagem</button>
                     </div>
                 </div>
             )}
 
-            <div className="glass-card overflow-hidden">
+            {/* Busca Mobile */}
+            <div className="lg:hidden px-4 mb-4">
+                <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder="Buscar por nome ou consultor..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-11 text-[13px] text-slate-100 placeholder:text-slate-600 outline-none focus:border-blue-500/50 transition-all font-medium"
+                        value={filters.nome}
+                        onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
+                    />
+                </div>
+            </div>
+
+            {/* Cards Mobile */}
+            <div className="lg:hidden px-1">
+                {isLoading ? (
+                    <div className="space-y-4">
+                        {[...Array(3)].map((_, i) => <div key={i} className="h-40 bg-white/5 rounded-2xl animate-pulse"></div>)}
+                    </div>
+                ) : filteredLeads.length === 0 ? (
+                    <div className="text-center py-20 bg-white/5 rounded-3xl border border-dashed border-white/10">
+                        <p className="text-slate-500 text-[13px]">Nenhum lead encontrado.</p>
+                    </div>
+                ) : (
+                    filteredLeads.map(l => <LeadCard key={l.id} lead={l} />)
+                )}
+            </div>
+
+            {/* Tabela Desktop */}
+            <div className="hidden lg:block glass-card overflow-hidden">
                 <div className="custom-scrollbar overflow-auto" style={{ maxHeight: 'calc(100vh - 140px)', minHeight: '450px' }}>
-                    <table className="w-full text-left border-collapse" style={{ minWidth: '1100px' }}>
+                    <table className="w-full text-left border-collapse" style={{ minWidth: '600px' }}>
                         <thead className="sticky top-0 z-40 bg-[#040810]/92 backdrop-blur-xl">
                             <tr>
                                 <th className={thCls} style={{ ...thStyle, width: 220 }}>
@@ -235,7 +330,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                         </div>
                                     </div>
                                 </th>
-                                <th className={`${thCls} hidden lg:table-cell`} style={{ ...thStyle, width: 240 }}>
+                                <th className={`${thCls} table-cell`} style={{ ...thStyle, width: 140 }}>
                                     <div className="flex items-center justify-between">
                                         <button onClick={() => handleSort('consultor')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Consultor <SortIcon col="consultor" /></button>
                                         <div className="relative filter-container">
@@ -244,7 +339,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                         </div>
                                     </div>
                                 </th>
-                                <th className={`${thCls} hidden md:table-cell text-right`} style={{ ...thStyle, width: 160 }}>
+                                <th className={`${thCls} hidden sm:table-cell text-right`} style={{ ...thStyle, width: 120 }}>
                                     <div className="flex items-center justify-end gap-2">
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowRendaFilter(!showRendaFilter)} className="p-1.5 rounded-lg mr-1" style={{ color: filters.renda ? '#60a5fa' : '#94a3b8', background: filters.renda ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Filter size={13} /></button>
@@ -260,18 +355,17 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                         <button onClick={() => handleSort('renda')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Renda <SortIcon col="renda" /></button>
                                     </div>
                                 </th>
-                                <th className={`${thCls} hidden lg:table-cell`} style={{ ...thStyle, width: 120 }}><button onClick={() => handleSort('sla')} className="flex items-center justify-center w-full hover:text-white transition-colors" style={thLbl}>SLA <SortIcon col="sla" /></button></th>
-                                <th className={`${thCls} hidden xl:table-cell text-center`} style={{ ...thStyle, width: 200 }}><button onClick={() => handleSort('acao')} className="flex items-center justify-center w-full hover:text-white transition-colors" style={thLbl}>Ação Operacional <SortIcon col="acao" /></button></th>
-                                <th className={`${thCls} text-center`} style={{ ...thStyle, width: 140 }}><span style={thLbl}>Links Úteis</span></th>
+                                <th className={`${thCls} hidden lg:table-cell`} style={{ ...thStyle, width: 100 }}><button onClick={() => handleSort('sla')} className="flex items-center justify-center w-full hover:text-white transition-colors" style={thLbl}>SLA <SortIcon col="sla" /></button></th>
+                                <th className={`${thCls} hidden xl:table-cell text-center`} style={{ ...thStyle, width: 180 }}><button onClick={() => handleSort('acao')} className="flex items-center justify-center w-full hover:text-white transition-colors" style={thLbl}>Ação Operacional <SortIcon col="acao" /></button></th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? <TableSkeleton /> : filteredLeads.map(lead => (
-                                <LeadRow key={lead.id} lead={lead} setSelectedLead={setSelectedLead} updateLeadStatus={updateLeadStatus} editingStatusLeadId={editingStatusLeadId} setEditingStatusLeadId={setEditingStatusLeadId} openWaModal={openWaModal} setFilters={setFilters} />
+                                <LeadRow key={lead.id} lead={lead} setSelectedLead={setSelectedLead} updateLeadStatus={updateLeadStatus} editingStatusLeadId={editingStatusLeadId} setEditingStatusLeadId={setEditingStatusLeadId} handleOpenWA={handleOpenWA} setFilters={setFilters} />
                             ))}
                             {!isLoading && filteredLeads.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="p-20 text-center">
+                                    <td colSpan={6} className="p-20 text-center">
                                         <div className="flex flex-col items-center justify-center gap-4">
                                             <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}><Search className="w-5 h-5" style={{ color: '#475569' }} /></div>
                                             <span className="text-[12px] font-medium" style={{ color: '#cbd5e1' }}>Nenhum cliente encontrado.</span>
@@ -287,7 +381,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
     );
 });
 
-const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingStatusLeadId, setEditingStatusLeadId, openWaModal, setFilters }: any) => {
+const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingStatusLeadId, setEditingStatusLeadId, handleOpenWA, setFilters }: any) => {
     const rawDays = getDaysInStage(lead);
     const days = (isNaN(Number(rawDays)) || rawDays === null) ? 0 : Number(rawDays);
     const limit = STAGE_SLAS[lead.status] || 0;
@@ -320,8 +414,8 @@ const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingSt
                     <div className="flex flex-col max-w-[200px]"><span className="text-[12px] font-bold text-slate-100 truncate">{lead.nome || 'Sem Nome'}</span><span className="text-[10px] truncate mt-0.5 text-slate-400">{lead.profissao || 'Sem profissão'}</span></div>
                 </div>
             </td>
-            <td className="px-5 py-4 hidden lg:table-cell"><span onClick={(e) => { e.stopPropagation(); setFilters((p: any) => ({ ...p, consultor: lead.consultor || '' })); }} className="text-[12px] font-medium text-slate-400 group-hover:text-cyan-300 transition-colors hover:underline decoration-cyan-500/30 underline-offset-4 cursor-pointer">{lead.consultor || '--'}</span></td>
-            <td className="px-5 py-4 text-right hidden md:table-cell font-mono text-[13px] text-slate-400">{formatMoney(lead.renda)}</td>
+            <td className="px-5 py-4 table-cell"><span onClick={(e) => { e.stopPropagation(); setFilters((p: any) => ({ ...p, consultor: lead.consultor || '' })); }} className="text-[12px] font-medium text-slate-400 group-hover:text-cyan-300 transition-colors hover:underline decoration-cyan-500/30 underline-offset-4 cursor-pointer">{lead.consultor || '--'}</span></td>
+            <td className="px-5 py-4 text-right hidden sm:table-cell font-mono text-[13px] text-slate-400">{formatMoney(lead.renda)}</td>
             <td className="px-5 py-4 hidden lg:table-cell">
                 <div className="flex flex-col items-center justify-center text-center">
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${isBreached ? 'bg-rose-500/10 border-rose-500/20 shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/10'}`}>
@@ -335,13 +429,6 @@ const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingSt
                 {lead.acao ? (
                     <div className="flex flex-col items-center gap-1"><button onClick={e => { e.stopPropagation(); setSelectedLead(lead); }} className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-200">{lead.acao}</button>{lead.dataAcao && <span className="text-[9px] font-black font-mono text-slate-100">{formatDate(lead.dataAcao)}</span>}</div>
                 ) : <span className="text-[11px] font-mono text-slate-600">--</span>}
-            </td>
-            <td className="px-5 py-4 text-center">
-                <div className="flex items-center justify-center gap-2">
-                    {lead.salesforceUrl ? <a href={lead.salesforceUrl} target="_blank" className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 bg-sky-500/10 border border-sky-500/20" onClick={e => e.stopPropagation()} title="Salesforce"><SalesforceIcon /></a> : <div className="w-8 h-8 rounded-xl flex items-center justify-center opacity-20 bg-white/5 border border-white/10 cursor-not-allowed"><SalesforceIcon color="#475569" /></div>}
-                    {lead.possuiSeguro ? <button className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 bg-violet-500/10 border border-violet-500/25 shadow-lg shadow-violet-500/10" title={`Seguradora: ${lead.seguradora || 'N/A'}`} onClick={e => { e.stopPropagation(); setSelectedLead(lead); }}><Shield size={14} className="text-violet-200" /></button> : <div className="w-8 h-8 rounded-xl flex items-center justify-center opacity-20 bg-white/5 border border-white/10 cursor-not-allowed"><Shield className="text-slate-500" /></div>}
-                    <button onClick={e => openWaModal(lead, e)} className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 bg-emerald-500/10 border border-emerald-500/25 shadow-lg shadow-emerald-500/10" title="WhatsApp"><MessageCircle size={14} className="text-emerald-400" /></button>
-                </div>
             </td>
         </tr>
     );

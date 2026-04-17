@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Activity, AlertCircle, MessageCircle, Send, ChevronDown, RotateCcw, User, ExternalLink } from 'lucide-react';
+import { Activity, AlertCircle, MessageCircle, Send, ChevronDown, User, ExternalLink } from 'lucide-react';
 
 import { Lead, STAGES } from '../../types';
 import { SectionTitle } from '../ui/SectionTitle';
 import { Field } from '../ui/Field';
 import { getWhatsAppLink, getSnippets } from '../../utils/helpers';
+import { toast } from '../../utils/toast';
 
 // ─── Mapeamento estrito de Ações por Status ─────────────────────────────────
 export const WORKFLOW_ACTIONS: Record<string, string[]> = {
-    'Lead':         ['Chamar consultor'],
-    'Planejamento': ['Aguardando informações', 'Agendar', 'Agendado', 'Pronto'],
-    'Fechamento':   ['Agendar', 'Agendado', 'No show'],
-    'Follow-up':    ['Agendar', 'Agendado', 'No show', 'Trocando mensagens'],
-    'Em Análise':   ['Aguardando documentação', 'Documentação enviada', 'Aguardando seguradora', 'Pendência'],
-    'Ganho':        ['Enviar apólice'],
+    'Lead':         ['Chamar Consultor'],
+    'Planejamento': ['Aguardando Informações', 'Agendar', 'Agendado'],
+    'Fechamento':   ['Agendar', 'Agendado', 'No Show'],
+    'Follow-up':    ['Agendar', 'Agendado', 'No Show', 'Trocando Mensagens'],
+    'Em Análise':   ['Aguardando Seguradora', 'Aguardando Documentação', 'Documentação Enviada'],
+    'Ganho':        ['Enviar Apólice', 'Criar Lead', 'Concluído'],
     'Perdido':      [],
     'Cancelou':     [],
 };
@@ -92,6 +93,11 @@ function getWaOptions(lead: Lead, snips: ReturnType<typeof getSnippets>) {
 export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleResetSLA, consultorWhatsapp = '', consultorTeamsLink = '' }) => {
     const [showWAMenu, setShowWAMenu]               = useState(false);
     const [showConsultorMenu, setShowConsultorMenu] = useState(false);
+    
+    // Estados para o Modal de Revisão
+    const [isReviewing, setIsReviewing] = useState(false);
+    const [reviewMsg, setReviewMsg]     = useState('');
+    const [pendingTarget, setPendingTarget] = useState({ phone: '', label: '', type: '' });
 
     // ── Ações disponíveis derivadas do WORKFLOW_ACTIONS ──────────────────────
     const acoesDisponiveis = WORKFLOW_ACTIONS[lead.status] ?? [];
@@ -123,23 +129,30 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
     // Número do consultor passado pelo SideSheet
     const consultorPhone = consultorWhatsapp;
 
-    const handleWaSend = (phone: string, msg: string, labelLog: string) => {
+    const handleWaSend = (phone: string, msg: string, labelLog: string, senderType: string = 'Cliente') => {
         if (!phone) {
-            alert('Número não cadastrado.');
+            toast.error('Número não cadastrado.');
             return;
         }
-        const now = new Date().toLocaleString('pt-BR');
-        handleUpdateLead({
-            historico: [`[CONTATO 📱] WhatsApp: "${labelLog}" em ${now}`, ...(lead.historico || [])]
-        });
-        window.open(getWhatsAppLink(phone, msg), '_blank');
+        setReviewMsg(msg);
+        setPendingTarget({ phone, label: labelLog, type: senderType });
+        setIsReviewing(true);
         setShowWAMenu(false);
         setShowConsultorMenu(false);
     };
 
+    const confirmAndSend = () => {
+        const now = new Date().toLocaleString('pt-BR');
+        handleUpdateLead({
+            historico: [`[CONTATO 📱] ${pendingTarget.type}: "${pendingTarget.label}" em ${now}`, ...(lead.historico || [])]
+        });
+        window.open(getWhatsAppLink(pendingTarget.phone, reviewMsg), '_blank');
+        setIsReviewing(false);
+    };
+
     const handleTeamsSend = (teamsUrl: string, msg: string, labelLog: string) => {
         if (!teamsUrl) {
-            alert('Link do Teams não cadastrado. Adicione no painel do Consultor.');
+            toast.error('Link do Teams não cadastrado. Adicione no painel do Consultor.');
             return;
         }
         const now = new Date().toLocaleString('pt-BR');
@@ -191,18 +204,7 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                     {/* Botões de ação rápida */}
                     <div className="col-span-2 md:col-span-1 flex items-center gap-3 pb-1 flex-wrap">
 
-                        {/* ── Reiniciar SLA ── */}
-                        <button
-                            onClick={handleResetSLA}
-                            title="Reiniciar contagem de SLA para hoje"
-                            className="flex items-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)', color: '#fbbf24', boxShadow: '0 0 12px rgba(245,158,11,0.10)' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.18)'; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.08)'; }}
-                        >
-                            <RotateCcw size={13} />
-                            SLA
-                        </button>
+
 
                         {/* ── WhatsApp CLIENTE (visível somente ≥ Follow-up) ── */}
                         {showClientButton && (
@@ -227,7 +229,7 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                                             {clienteOpcoes.map((opt, i) => (
                                                 <button
                                                     key={i}
-                                                    onClick={() => handleWaSend(lead.celular || '', opt.msg, opt.label)}
+                                                    onClick={() => handleWaSend(lead.celular || '', opt.msg, opt.label, 'Cliente')}
                                                     className="w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-500/10 hover:text-emerald-400 text-slate-300 text-[11px] font-medium transition-all flex items-center justify-between group"
                                                 >
                                                     {opt.label}
@@ -278,7 +280,7 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                                                     onClick={() => {
                                                         const msg = consultorOpcoes[0]?.msg || '';
                                                         const label = consultorOpcoes[0]?.label || 'WhatsApp';
-                                                        handleWaSend(consultorWhatsapp, msg, label);
+                                                        handleWaSend(consultorWhatsapp, msg, label, 'Consultor');
                                                     }}
                                                     disabled={!consultorWhatsapp}
                                                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 transition-all group disabled:opacity-35 disabled:cursor-not-allowed"
@@ -327,7 +329,7 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                                                     {consultorOpcoes.map((opt, i) => (
                                                         <button
                                                             key={i}
-                                                            onClick={() => handleWaSend(consultorWhatsapp, opt.msg, opt.label)}
+                                                            onClick={() => handleWaSend(consultorWhatsapp, opt.msg, opt.label, 'Consultor')}
                                                             disabled={!consultorWhatsapp}
                                                             className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-blue-500/10 hover:text-blue-400 text-slate-400 text-[11px] font-medium transition-all flex items-center justify-between group disabled:opacity-35 disabled:cursor-not-allowed"
                                                         >
@@ -380,6 +382,48 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                             onChange={e => handleUpdateLead({ motivoPerda: e.target.value })}
                         />
                     </Field>
+                </div>
+            )}
+
+            {/* Modal de Revisão de Mensagem */}
+            {isReviewing && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsReviewing(false)} />
+                    <div className="glass-card w-full max-w-lg relative z-10 p-6 animate-in zoom-in-95 duration-200 shadow-2xl border-white/10">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20">
+                                <Send size={18} className="text-emerald-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-white font-black text-sm uppercase tracking-widest">Revisar Mensagem</h3>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Para: {pendingTarget.type} · {pendingTarget.label}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-[#0b1121] rounded-2xl border border-white/5 p-4 mb-6">
+                            <textarea
+                                className="w-full bg-transparent text-slate-200 text-[13px] leading-relaxed outline-none min-h-[160px] resize-none font-medium placeholder:text-slate-600"
+                                value={reviewMsg}
+                                onChange={e => setReviewMsg(e.target.value)}
+                                placeholder="Digite ou ajuste a mensagem aqui..."
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsReviewing(false)}
+                                className="flex-1 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 text-[10px] font-black uppercase tracking-widest transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmAndSend}
+                                className="flex-[2] px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                            >
+                                <Send size={14} /> Enviar via WhatsApp
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </>
