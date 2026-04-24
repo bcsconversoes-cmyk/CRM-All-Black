@@ -72,7 +72,7 @@ const LeadTaskRow: React.FC<LeadTaskRowProps> = ({
                     <p className="text-[11px] font-bold text-slate-200 truncate leading-tight group-hover:text-white transition-colors">
                         {lead.nome || 'Sem Nome'}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <span
                             className="text-[9px] font-black font-mono mt-px"
                             style={{ color: urgency === 'breach' ? '#fca5a5' : urgency === 'warn' ? '#fcd34d' : '#64748b' }}
@@ -89,6 +89,22 @@ const LeadTaskRow: React.FC<LeadTaskRowProps> = ({
                                 · {lead.acao}
                             </span>
                         )}
+                        {/* Tarefa interna: data do follow-up agendado */}
+                        {lead.status === 'Follow-up' && lead.dataAcao && (() => {
+                            const isOverdue = new Date(lead.dataAcao) < new Date(new Date().toDateString());
+                            return (
+                                <span
+                                    className="text-[8px] font-black font-mono px-1.5 py-0.5 rounded-md"
+                                    style={{
+                                        background: isOverdue ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.10)',
+                                        border: `1px solid ${isOverdue ? 'rgba(244,63,94,0.25)' : 'rgba(16,185,129,0.20)'}`,
+                                        color: isOverdue ? '#fca5a5' : '#6ee7b7',
+                                    }}
+                                >
+                                    📅 {formatDate(lead.dataAcao)}
+                                </span>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>

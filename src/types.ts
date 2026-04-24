@@ -75,7 +75,7 @@ export const STAGE_SLAS: Record<string, number> = {
     'Planejamento': 5,
     'Fechamento': 5,
     'Follow-up': 2,
-    'Em Análise': 3,
+    'Em Análise': 5,
     'Ganho': 0,
     'Perdido': 0,
     'Cancelou': 0

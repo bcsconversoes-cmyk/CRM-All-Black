@@ -92,7 +92,7 @@ export default function SideSheet({
     const handleUpdateLead = (updates: Partial<Lead>) => {
         let updated = { ...lead, ...updates };
 
-        if (updates.acao === 'No show') {
+        if (updates.acao === 'No Show') {
             const now = new Date().toLocaleString('pt-BR');
             const [d, m, y] = now.split(' ')[0].split('/');
             const dateIso = `${y}-${m}-${d}`;
@@ -116,9 +116,12 @@ export default function SideSheet({
         if (updates.status && updates.status !== lead.status) {
             updated.acao = '';
             updated.dataAcao = '';
-            const now = new Date().toLocaleString('pt-BR');
+            // Reinicia o contador de SLA para o novo status
+            const now = new Date();
+            updated.dataUltimoStatus = now.toISOString().split('T')[0]; // YYYY-MM-DD
+            const nowBr = now.toLocaleString('pt-BR');
             const safeHistorico = Array.isArray(updated.historico) ? updated.historico : [];
-            updated.historico = [`De "${lead.status}" → "${updated.status}" em ${now}`, ...safeHistorico];
+            updated.historico = [`De "${lead.status}" → "${updated.status}" em ${nowBr}`, ...safeHistorico];
         }
 
         const fastTrackStatus = checkFastTrack(updated);

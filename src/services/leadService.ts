@@ -8,8 +8,10 @@ export const getLeads = async () => {
     return data;
 };
 
-export const updateLeadStatus = async (id: number, status: string, historico: string[]) => {
-    const { error } = await supabase.from('leads').update({ status, historico }).eq('id', id);
+export const updateLeadStatus = async (id: number, status: string, historico: string[], dataUltimoStatus?: string) => {
+    const payload: any = { status, historico, acao: '', data_acao: '' };
+    if (dataUltimoStatus) payload.data_ultimo_status = dataUltimoStatus;
+    const { error } = await supabase.from('leads').update(payload).eq('id', id);
     if (error) throw error;
 };
 

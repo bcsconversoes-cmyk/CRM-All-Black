@@ -78,16 +78,27 @@ export function useLeads() {
 
     const changeLeadStatus = async (lead: Lead, newStatus: string) => {
         const oldLeads = [...leads]; // Backup para rollback (Optimistic UI)
-        const newHistorico = [...(lead.historico || []), `${new Date().toLocaleString('pt-BR')} - Novo Status: ${newStatus}`];
+        const now = new Date();
+        const nowBr = now.toLocaleString('pt-BR');
+        // Formato que getDaysInStage sabe parsear (procura " → " e "em DD/MM/AAAA")
+        const newHistorico = [
+            `De "${lead.status}" → "${newStatus}" em ${nowBr}`,
+            ...(lead.historico || [])
+        ];
+        const todayIso = now.toISOString().split('T')[0]; // YYYY-MM-DD para o banco
 
-        // 1. Atualiza a UI imediatamente (0ms delay)
-        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: newStatus, historico: newHistorico } : l));
+        // 1. Atualiza a UI imediatamente (Optimistic UI)
+        setLeads(prev => prev.map(l =>
+            l.id === lead.id
+                ? { ...l, status: newStatus, acao: '', dataAcao: '', historico: newHistorico, dataUltimoStatus: todayIso }
+                : l
+        ));
 
         try {
-            // 2. Persiste no banco de dados
-            await leadService.updateLeadStatus(lead.id, newStatus, newHistorico);
+            // 2. Persiste no banco — inclui data_ultimo_status para reiniciar SLA
+            await leadService.updateLeadStatus(lead.id, newStatus, newHistorico, todayIso);
         } catch (err) {
-            // 3. Em caso de falha, reverte para o estado anterior
+            // 3. Em caso de falha, reverte
             setLeads(oldLeads);
             console.error("Erro ao mudar status", err);
         }

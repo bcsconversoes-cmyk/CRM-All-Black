@@ -149,7 +149,12 @@ export const checkSLA = (lead: Lead) => {
   
   if (maxDays === undefined) return { isBreached: false, days, maxDays: 0 };
   
-  // Se o cliente tem uma data de agendamento validamos se ela já estourou
+  // No Show nunca é protegido por dataAcao — a reunião não aconteceu
+  if (lead.acao === 'No Show') {
+    return { isBreached: days > maxDays, days, maxDays };
+  }
+
+  // Se há uma data de agendamento futura (hoje inclusive), o SLA fica protegido
   let isProtected = false;
   if (lead.dataAcao && lead.dataAcao.trim()) {
     try {
@@ -162,21 +167,18 @@ export const checkSLA = (lead: Lead) => {
         if (parts.length === 3) {
           acaoDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
         } else {
-          acaoDate = new Date(); // fallback if strange format
+          acaoDate = new Date();
         }
       }
       acaoDate.setHours(0, 0, 0, 0);
       
-      // SLA é protegido SE a dataAcao ainda for HOJE ou no FUTURO.
-      if (acaoDate >= now) {
-        isProtected = true;
-      }
-    } catch(e) {
-      isProtected = false; // Em falha de parse, segue regra padrão
+      // SLA protegido SE a data for hoje ou no futuro
+      if (acaoDate >= now) isProtected = true;
+    } catch {
+      isProtected = false;
     }
   }
 
-  // Override para follow-up: se "dataAcao" estiver vencido, o SLA quebrou
   return { isBreached: !isProtected && days > maxDays, days, maxDays };
 };
 
@@ -186,54 +188,130 @@ export const checkFastTrack = (lead: Lead): string => {
   return lead.status;
 };
 
+// ─── Mensagens automáticas por Status+Ação ────────────────────────────────────
+
+/** Retorna a mensagem contextual para o LEAD (WhatsApp) baseada em status+ação */
 export const getClientWhatsAppMessage = (lead: Lead) => {
-  const cliente = (lead?.nome || 'o cliente').split(' ')[0];
+  const lead_nome = (lead?.nome || 'o cliente').split(' ')[0];
+  const consultor_nome = lead?.consultor ? lead.consultor.split(' ')[0] : 'Consultor';
+  const data = lead.dataAcao ? formatDate(lead.dataAcao) : '[data]';
   const snippets = getSnippets(lead);
-  
-  // Mapeamento de mensagens por combinação de Status e Ação
+
+  // ── FOLLOW-UP ─────────────────────────────────────────────────────────────
   if (lead.status === 'Follow-up') {
-    if (lead.acao === 'Agendar') return `Olá ${cliente}, tudo bem? Notei que avançamos na apresentação e gostaria de ver se conseguimos agendar o fechamento. Qual horário fica melhor para você?`;
-    if (lead.acao === 'No show') return `Olá ${cliente}, senti sua falta na nossa reunião. Aconteceu algum imprevisto? Vamos remarcar para não perdermos o timing das condições que estruturamos?`;
-    if (lead.acao === 'Agendado') return `Olá ${cliente}, passando para confirmar nossa reunião que ficou agendada. Recomendamos um ambiente tranquilo para passarmos pelos detalhes. Até logo!`;
+    if (lead.acao === 'Agendar') {
+      return `Olá, ${lead_nome}! Aqui é o ${consultor_nome}. Sei que uma decisão como essa exige cuidado, por isso estou passando para saber se surgiram novos pontos na sua análise. Vamos marcar um papo rápido para eu te dar o suporte necessário e garantirmos que o plano faça total sentido para você?`;
+    }
+    if (lead.acao === 'Agendado') {
+      return `Combinado, ${lead_nome}! No dia ${data} vamos repassar os pontos principais. Esse cuidado agora é o que garante que seu planejamento seja sólido e seguro. Até lá!`;
+    }
+    if (lead.acao === 'No Show') {
+      return `Oi, ${lead_nome}! Imaginei que pudesse ter surgido algum imprevisto hoje. Como esse alinhamento é fundamental para não perdermos o prazo das condições que desenhamos, me avise assim que puder falar para reagendarmos.`;
+    }
   }
-  
+
+  // ── EM ANÁLISE ────────────────────────────────────────────────────────────
   if (lead.status === 'Em Análise') {
-    if (lead.acao === 'Aguardando documentação') return `Olá ${cliente}, tudo bem? Para darmos prosseguimento à emissão, a seguradora solicitou alguns documentos complementares. Consegue me enviar hoje?`;
-    if (lead.acao === 'Documentação enviada') return `Olá ${cliente}, seus documentos já estão com a seguradora. Estou acompanhando de perto e te aviso assim que tivermos o retorno.`;
-    if (lead.acao === 'Pendência') return `Olá ${cliente}, tudo bem? Surgiu uma pendência no processo da sua apólice que precisa ser resolvida para darmos andamento. Consigo te ligar para explicar os detalhes?`;
+    if (lead.acao === 'Aguardando Documentação') {
+      return `Olá, ${lead_nome}! A seguradora está precisando daqueles documentos que conversamos para continuar a análise do seu risco. Consegue me enviar por aqui?`;
+    }
+    if (lead.acao === 'Documentação Enviada') {
+      return `Vou enviar os documentos para a seguradora e vou te atualizando por aqui, ok?`;
+    }
   }
-  
+
+  // ── GANHO ─────────────────────────────────────────────────────────────────
   if (lead.status === 'Ganho') {
+    if (lead.acao === 'Enviar Apólice') {
+      return `${lead_nome}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`;
+    }
     if (lead.acao === 'Criar Lead') return snippets.boasVindas;
     return snippets.apoliceCliente;
   }
 
-  // Fallback para mensagens genéricas do pipeline
+  // ── Fallback genérico ──────────────────────────────────────────────────────
   if (lead.acao === 'Acompanhamento (Cliente)') return snippets.msg02;
-  
-  return `Olá ${cliente}, como você está? Gostaria de dar continuidade ao nosso planejamento financeiro. Podemos falar?`;
+  return `Olá ${lead_nome}, como você está? Gostaria de dar continuidade ao nosso planejamento financeiro. Podemos falar?`;
 };
 
+/** Retorna a mensagem contextual para o CONSULTOR (WhatsApp/Teams) baseada em status+ação */
 export const getConsultantWhatsAppMessage = (lead: Lead) => {
-  const consultor = lead?.consultor ? lead.consultor.split(' ')[0] : 'Consultor';
-  const cliente = (lead?.nome || 'o cliente').split(' ')[0];
+  const consultor_nome = lead?.consultor ? lead.consultor.split(' ')[0] : 'Consultor';
+  const lead_nome = lead?.nome || 'o cliente';
+  const data = lead.dataAcao ? formatDate(lead.dataAcao) : '[data]';
   const snippets = getSnippets(lead);
-  const cadence = getCadenceFlow(lead);
 
-  // Caso Ganho: mensagens específicas para o consultor
+  // ── LEAD ──────────────────────────────────────────────────────────────────
+  if (lead.status === 'Lead') {
+    return `Olá, ${consultor_nome}! Passando para avisar que recebemos o interesse de ${lead_nome}. No momento, estamos aguardando a chegada das informações detalhadas para que você possa fazer uma abordagem assertiva. Fique atento, te aviso assim que os dados estiverem prontos!`;
+  }
+
+  // ── PLANEJAMENTO ──────────────────────────────────────────────────────────
+  if (lead.status === 'Planejamento') {
+    if (lead.acao === 'Aguardando Informações') {
+      return `Olá, ${consultor_nome}! Para darmos o próximo passo no plano do ${lead_nome}, ainda precisamos de algumas informações. Consegue verificar com ele? Se precisar de alguma ajuda, basta me acionar aqui.`;
+    }
+    if (lead.acao === 'Agendar') {
+      return `${consultor_nome}, tudo bem? O próximo passo para montarmos o planejamento do lead ${lead_nome} é o agendamento da reunião de planejamento. Vamos garantir esse horário na agenda?`;
+    }
+    if (lead.acao === 'Agendado') {
+      return `Agenda atualizada! O nosso planejamento para tratarmos do lead ${lead_nome} está marcado para o dia ${data}.`;
+    }
+  }
+
+  // ── FECHAMENTO ────────────────────────────────────────────────────────────
+  if (lead.status === 'Fechamento') {
+    if (lead.acao === 'Agendar') {
+      return `${consultor_nome}, tudo bem? O próximo passo para o ${lead_nome} é o agendamento da reunião de fechamento. Vamos garantir esse horário na agenda?`;
+    }
+    if (lead.acao === 'Agendado') {
+      return `Agenda atualizada! O nosso compromisso com o ${lead_nome} está marcado para o dia ${data}. Para evitarmos o no-show, é importante lembrá-lo.`;
+    }
+    if (lead.acao === 'No Show') {
+      return `Vamos tentar reagendar esse fechamento com o lead ${lead_nome}?`;
+    }
+  }
+
+  // ── FOLLOW-UP ─────────────────────────────────────────────────────────────
+  if (lead.status === 'Follow-up') {
+    if (lead.acao === 'Agendar') {
+      return `${consultor_nome}, o ${lead_nome} ainda está pensando, mas não podemos deixar esfriar. Vamos agendar uma nova reunião para tirar as dúvidas remanescentes?`;
+    }
+    if (lead.acao === 'Agendado') {
+      return `O follow-up com o ${lead_nome} está marcado para o dia ${data}.`;
+    }
+    if (lead.acao === 'No Show') {
+      return `Estou com dificuldades em contactar o lead ${lead_nome}. Consegue seguir com o follow-up por aí?`;
+    }
+  }
+
+  // ── EM ANÁLISE ────────────────────────────────────────────────────────────
+  if (lead.status === 'Em Análise') {
+    if (lead.acao === 'Aguardando Documentação') {
+      return `${consultor_nome}, o processo do ${lead_nome} está parado na análise. Consegue dar um check com ele sobre os documentos pendentes?`;
+    }
+    if (lead.acao === 'Documentação Enviada') {
+      return `O lead ${lead_nome} já me enviou a documentação que a seguradora solicitou. Estou acompanhando.`;
+    }
+  }
+
+  // ── GANHO ─────────────────────────────────────────────────────────────────
   if (lead.status === 'Ganho') {
-    if (lead.acao === 'Criar Lead') return snippets.criarLeadConsultor;
+    if (lead.acao === 'Criar Lead') {
+      return `${consultor_nome}, a apólice do lead ${lead_nome} foi emitida. Consegue criar o lead no Salesforce e colocar na descrição que é para me enviar?`;
+    }
+    if (lead.acao === 'Concluído') {
+      return `${consultor_nome}, tudo bem? Passando para te atualizar sobre o lead ${lead_nome}:\n\n✅ Apólices emitidas e enviadas ao cliente;\n✅ Contratos ativados no Salesforce;\n✅ Apólices anexadas aos contratos.\n\nBora pra cima! 🚀`;
+    }
+    if (lead.acao === 'Enviar Apólice') return snippets.apoliceConsultor;
     return snippets.apoliceConsultor;
   }
-  
-  let msg = `Fala ${consultor}, tudo bem? Passando para cobrar o lead ${cliente}.\n\n📌 Status: ${lead.status}\n⚡ Ação: ${lead.acao || 'A definir'}`;
-  
-  if (lead.dataAcao) {
-    msg += `\n📅 Data Agendada: ${formatDate(lead.dataAcao)}`;
-  }
-  
+
+  // ── Fallback genérico ──────────────────────────────────────────────────────
+  const cadence = getCadenceFlow(lead);
+  let msg = `Fala ${consultor_nome}, tudo bem? Passando para cobrar o lead ${lead_nome}.\n\n📌 Status: ${lead.status}\n⚡ Ação: ${lead.acao || 'A definir'}`;
+  if (lead.dataAcao) msg += `\n📅 Data Agendada: ${formatDate(lead.dataAcao)}`;
   msg += `\n\n💡 Sugestão: ${cadence.currentStep.msg}`;
-  
   return msg;
 };
 
@@ -278,7 +356,7 @@ export const getSnippets = (lead: Lead) => {
     apoliceCliente: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
 
     /** MSG — Apólice Emitida (para o CONSULTOR) */
-    apoliceConsultor: `${consultor}, tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Apólices emitidas e enviadas ao cliente\n✅ Contratos ativados no Salesforce\n✅ Apólices anexadas aos contratos\n\nQualquer dúvida é só chamar. Bora pra cima! 🚀`,
+    apoliceConsultor: `${consultor}, tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Apólices emitidas e enviadas ao cliente;\n✅ Contratos ativados no Salesforce;\n✅ Apólices anexadas aos contratos.\n\nBora pra cima! 🚀`,
 
     /** Boas-vindas (para CLIENTE ao Criar Lead) */
     boasVindas: `Olá ${cliente}! Seja muito bem-vindo ao ecossistema Portfel. É uma honra ter você conosco. Agora você conta com um acompanhamento contínuo para garantir que sua blindagem financeira esteja sempre atualizada. Conte comigo!`,

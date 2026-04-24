@@ -19,18 +19,10 @@ export const useDashboardStats = (leads: Lead[], consultores: Consultor[]) => {
             ? Math.round((reunioes.filter(r => r.acao === 'No Show').length / reunioes.length) * 100)
             : 0;
 
-        // Follow-up Consultores
-        const CONSULTANT_ACTIONS = ['Chamar Consultor', 'Aguardando Informações', 'Agendar', 'No Show', 'Pendência'];
+        // Follow-up Consultores — apenas leads com SLA estourado (todos os status ativos)
         const followUpConsultores = ativos
-            .filter(l => l.acao && CONSULTANT_ACTIONS.includes(l.acao))
-            .sort((a, b) => {
-                const daysA = getDaysInStage(a);
-                const daysB = getDaysInStage(b);
-                const breachA = daysA > 2;
-                const breachB = daysB > 2;
-                if (breachA !== breachB) return breachA ? -1 : 1;
-                return daysB - daysA;
-            });
+            .filter(l => checkSLA(l).isBreached)
+            .sort((a, b) => getDaysInStage(b) - getDaysInStage(a));
 
         const slaBreached = ativos.filter(l => checkSLA(l).isBreached);
 
@@ -56,12 +48,21 @@ export const useDashboardStats = (leads: Lead[], consultores: Consultor[]) => {
                 return getDaysInStage(b) - getDaysInStage(a);
             });
 
-        // Follow-up cliente — por urgência
+        // Follow-up cliente — SLA estourado primeiro, depois Ações 'Agendar' e 'No Show'
         const followUpCliente = ativos
-            .filter(l => l.status === 'Follow-up')
+            .filter(l =>
+                l.status === 'Follow-up' &&
+                (checkSLA(l).isBreached || ['Agendar', 'No Show'].includes(l.acao || ''))
+            )
             .sort((a, b) => {
-                const sa = checkSLA(a), sb = checkSLA(b);
-                if (sa.isBreached !== sb.isBreached) return sa.isBreached ? -1 : 1;
+                const breachA = checkSLA(a).isBreached;
+                const breachB = checkSLA(b).isBreached;
+                if (breachA !== breachB) return breachA ? -1 : 1;
+                // Entre não-estourados: No Show antes de Agendar
+                const actionPri = (acao: string) => acao === 'No Show' ? 0 : acao === 'Agendar' ? 1 : 2;
+                const priA = actionPri(a.acao || '');
+                const priB = actionPri(b.acao || '');
+                if (priA !== priB) return priA - priB;
                 return getDaysInStage(b) - getDaysInStage(a);
             });
 

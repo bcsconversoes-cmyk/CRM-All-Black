@@ -4,7 +4,7 @@ import { Activity, AlertCircle, MessageCircle, Send, ChevronDown, User, External
 import { Lead, STAGES } from '../../types';
 import { SectionTitle } from '../ui/SectionTitle';
 import { Field } from '../ui/Field';
-import { getWhatsAppLink, getSnippets } from '../../utils/helpers';
+import { getWhatsAppLink, getSnippets, getClientWhatsAppMessage, getConsultantWhatsAppMessage } from '../../utils/helpers';
 import { toast } from '../../utils/toast';
 
 // ─── Mapeamento estrito de Ações por Status ─────────────────────────────────
@@ -36,55 +36,72 @@ const inputCls = "w-full bg-transparent border-b border-white/[0.08] px-0 py-3 t
 const selectCls = "w-full cursor-pointer appearance-none bg-[#0f172a] border border-white/[0.10] rounded-xl px-4 py-3 pr-10 text-slate-100 text-[13px] font-medium outline-none focus:border-blue-500/60 transition-colors shadow-inner";
 const selectStyle = { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' };
 
-// ─── Opções de WhatsApp por status ──────────────────────────────────────────
+// ─── Opções de WhatsApp por status/ação ──────────────────────────────────────
 function getWaOptions(lead: Lead, snips: ReturnType<typeof getSnippets>) {
-    const isGanho = lead.status === 'Ganho';
+    // Mensagem contextual do consultor baseada em status+ação
+    const consultorMsg = getConsultantWhatsAppMessage(lead);
+    const consultorLabel = (() => {
+        if (lead.status === 'Lead') return 'Recebimento de Lead';
+        if (lead.status === 'Planejamento') {
+            if (lead.acao === 'Aguardando Informações') return 'Aguardando Informações';
+            if (lead.acao === 'Agendar') return 'Cobrar Agendamento';
+            if (lead.acao === 'Agendado') return 'Confirmar Agendamento';
+        }
+        if (lead.status === 'Fechamento') {
+            if (lead.acao === 'Agendar') return 'Cobrar Fechamento';
+            if (lead.acao === 'Agendado') return 'Confirmar Fechamento';
+            if (lead.acao === 'No Show') return 'Reagendar Fechamento';
+        }
+        if (lead.status === 'Follow-up') {
+            if (lead.acao === 'Agendar') return 'Cobrar Follow-up';
+            if (lead.acao === 'Agendado') return 'Confirmar Follow-up';
+            if (lead.acao === 'No Show') return 'Dificuldade de Contato';
+        }
+        if (lead.status === 'Em Análise') {
+            if (lead.acao === 'Aguardando Documentação') return 'Cobrar Documentos';
+            if (lead.acao === 'Documentação Enviada') return 'Docs Recebidos';
+        }
+        if (lead.status === 'Ganho') {
+            if (lead.acao === 'Enviar Apólice') return 'Apólice Emitida';
+            if (lead.acao === 'Criar Lead') return 'Criar no Salesforce';
+            if (lead.acao === 'Concluído') return 'Processo Concluído';
+        }
+        return lead.acao || 'Mensagem Contextual';
+    })();
 
-    // Opções para CLIENTE (sempre presentes)
+    // Opções para CONSULTOR — 1 mensagem contextual por ação
+    const consultorOpcoes = [{ label: consultorLabel, msg: consultorMsg, tag: 'Consultor' }];
+
+    // Mensagem contextual do cliente baseada em status+ação
+    const clientMsg = getClientWhatsAppMessage(lead);
+
+    // Opções para CLIENTE — contextuais por status
     const clienteOpcoes = (() => {
-        if (isGanho) {
+        if (lead.status === 'Ganho') {
             return [
-                { label: '🎉 Apólice Emitida', msg: snips.apoliceCliente, tag: 'Cliente' },
+                { label: '🎉 Apólice Emitida', msg: clientMsg, tag: 'Cliente' },
             ];
         }
-        if (['Follow-up', 'Em Análise'].includes(lead.status)) {
+        if (lead.status === 'Follow-up') {
             return [
-                { label: '01 · Apresentação', msg: snips.msg_apresentacao, tag: 'Cliente' },
-                { label: '02 · Proposta Detalhada', msg: snips.msg01, tag: 'Cliente' },
+                { label: `💬 ${lead.acao || 'Mensagem'} (Atual)`, msg: clientMsg, tag: 'Cliente' },
                 { label: '03 · Acompanhamento 1', msg: snips.msg02, tag: 'Cliente' },
                 { label: '04 · Acompanhamento 2', msg: snips.msg03, tag: 'Cliente' },
                 { label: '05 · Prioridade Atual?', msg: snips.msg04, tag: 'Cliente' },
                 { label: '06 · Encerrar Contato', msg: snips.msg05, tag: 'Cliente' },
             ];
         }
-        // Lead, Planejamento, Fechamento — mensagem padrão de apresentação
+        if (lead.status === 'Em Análise') {
+            return [
+                { label: `💬 ${lead.acao || 'Mensagem'} (Atual)`, msg: clientMsg, tag: 'Cliente' },
+                { label: '03 · Acompanhamento 1', msg: snips.msg02, tag: 'Cliente' },
+                { label: '04 · Acompanhamento 2', msg: snips.msg03, tag: 'Cliente' },
+            ];
+        }
+        // Lead, Planejamento, Fechamento — apresentação padrão
         return [
             { label: '01 · Apresentação', msg: snips.msg_apresentacao, tag: 'Cliente' },
         ];
-    })();
-
-    // Opções para CONSULTOR (sempre presentes quando há consultor)
-    const consultorOpcoes = (() => {
-        if (isGanho) {
-            return [
-                { label: '🎉 Apólice Emitida', msg: snips.apoliceConsultor, tag: 'Consultor' },
-            ];
-        }
-        switch (lead.status) {
-            case 'Lead':
-                return [{ label: 'Novo Lead — Acionar', msg: snips.formLead, tag: 'Consultor' }];
-            case 'Planejamento':
-                return [
-                    { label: 'Cobrar Infos do Cliente', msg: snips.cobrancaInfos, tag: 'Consultor' },
-                    { label: 'Cobrar Agendamento', msg: snips.cobrarPlanejamento, tag: 'Consultor' },
-                ];
-            case 'Fechamento':
-                return [{ label: 'Cobrar Fechamento', msg: snips.cobrarFechamento, tag: 'Consultor' }];
-            case 'Follow-up':
-                return [{ label: 'Follow-up Geral', msg: snips.followUpConsultor, tag: 'Consultor' }];
-            default:
-                return [{ label: 'Follow-up Geral', msg: snips.followUpConsultor, tag: 'Consultor' }];
-        }
     })();
 
     return { clienteOpcoes, consultorOpcoes };
@@ -347,10 +364,11 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                         )}
                     </div>
 
-                    {/* Campo de Data quando ação é Agendado */}
-                    {(lead.acao === 'Agendado' || lead.acao === 'Agendada') && (
+                    {/* Campo de Data: sempre para Follow-up, ou quando ação = Agendado */}
+                    {((lead.status === 'Follow-up' && !!lead.acao) ||
+                      (lead.acao === 'Agendado' || lead.acao === 'Agendada')) && (
                         <div className="col-span-2 md:col-span-1 animate-in fade-in slide-in-from-bottom-2">
-                            <Field label="Data Agendada">
+                            <Field label={lead.status === 'Follow-up' ? 'Data do Follow-up' : 'Data Agendada'}>
                                 <input
                                     type="date"
                                     className={`${inputCls} bg-[#0b1426] font-mono text-[#60a5fa] p-4 rounded-xl border border-blue-500/20 shadow-[0_0_15px_rgba(37,99,235,0.1)]`}

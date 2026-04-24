@@ -64,7 +64,7 @@ const TableSkeleton = () => (
 
 export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = false, globalSearch, setSelectedLead, updateLeadStatus }: LeadsTableProps) {
     const [filters, setFilters] = useState<FilterState>({
-        status: [],
+        status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em Análise'],
         nome: '',
         consultor: '',
         renda: ''
@@ -314,7 +314,10 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                                         </div>
                                                     ))}
                                                     {filters.status.length > 0 && (
-                                                        <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: [] })); }} className="w-full mt-1.5 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(37,99,235,0.08)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.15)' }}>Limpar filtros</button>
+                                                        <div className="flex gap-1.5 mt-1.5">
+                                                            <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em Análise'] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(37,99,235,0.08)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.15)' }}>Só Ativos</button>
+                                                            <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: [] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(100,116,139,0.08)', color: '#94a3b8', border: '1px solid rgba(100,116,139,0.15)' }}>Ver Todos</button>
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
