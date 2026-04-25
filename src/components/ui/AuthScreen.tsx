@@ -11,7 +11,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        const correctPassword = import.meta.env.VITE_CRM_PASSWORD || 'portfel2026';
+        const correctPassword = import.meta.env.VITE_CRM_PASSWORD || 'Nacala1515';
         if (passwordInput === correctPassword) {
             localStorage.setItem('crm_auth_token', 'VALID');
             setAuthError(false);
