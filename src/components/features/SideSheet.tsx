@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, MessageCircle, History, Plus, Loader2, User, DollarSign, Calendar, Link2, Shield, Check, Send, Activity, AlertCircle, Trash2, MessageSquare, AlertTriangle, MonitorPlay, ExternalLink } from 'lucide-react';
+import { X, Save, MessageCircle, History, Plus, Loader2, User, DollarSign, Calendar, Link2, Shield, Check, Send, Activity, AlertCircle, Trash2, MessageSquare, AlertTriangle, MonitorPlay, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Lead, Consultor, STAGES, STAGE_SLAS, Reuniao } from '../../types';
 import { checkFastTrack, getSnippets, formatMoney, parseDateInput, calcAge, calcIMC, formatPhone, getWhatsAppLink, getCadenceFlow, getConsultantWhatsAppMessage } from '../../utils/helpers';
 import { supabase } from '../../utils/supabase';
@@ -39,13 +39,15 @@ export default function SideSheet({
     const [lead, setLead] = useState<Lead>(initialLead || defaultLead);
     const [saving, setSaving] = useState(false);
     const [savedSuccess, setSavedSuccess] = useState(false);
-    const [activeTab, setActiveTab] = useState<'perfil' | 'operacao'>('operacao');
+    const [activeTab, setActiveTab] = useState<'perfil' | 'operacao'>('perfil');
+    const [showSensitiveData, setShowSensitiveData] = useState(false);
     const [isNewConsultor, setIsNewConsultor] = useState(false);
     const [novoConsultorNome, setNovoConsultorNome] = useState('');
     const [tempLinks, setTempLinks] = useState({ whatsapp: '', teams_link: '' });
     const [novaReuniao, setNovaReuniao] = useState<Partial<Reuniao> | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+    
 
     useEffect(() => {
         if (initialLead) {
@@ -54,7 +56,7 @@ export default function SideSheet({
             setLead(defaultLead);
         }
         setHasUnsavedChanges(false);
-        setActiveTab('operacao');
+        setActiveTab('perfil');
     }, [initialLead]);
 
     useEffect(() => {
@@ -326,6 +328,15 @@ export default function SideSheet({
                                             <SalesforceIcon className="w-4 h-4" color="#475569" />
                                         </div>
                                     )}
+
+                                    <button onClick={() => setShowSensitiveData(!showSensitiveData)}
+                                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-white/10"
+                                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                        title={showSensitiveData ? "Esconder dados sensíveis" : "Mostrar dados sensíveis"}>
+                                        {showSensitiveData ? <EyeOff size={15} className="text-blue-400" /> : <Eye size={15} />}
+                                    </button>
+
+
                                     <button onClick={() => {
                                         const params = new URLSearchParams({
                                             id: lead.id.toString(),
@@ -380,7 +391,7 @@ export default function SideSheet({
 
                 {activeTab === 'perfil' ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4">
-                        <LeadProfileForm lead={lead} handleUpdateLead={handleUpdateLead} />
+                        <LeadProfileForm lead={lead} handleUpdateLead={handleUpdateLead} showSensitiveData={showSensitiveData} />
                         <FinancialDossier lead={lead} handleUpdateLead={handleUpdateLead} />
                     </div>
                 ) : (

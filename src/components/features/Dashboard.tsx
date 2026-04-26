@@ -15,7 +15,6 @@ const CONFIG_ETAPAS = [
     { id: 'Planejamento', label: 'Planejamento',   accent: 'rgba(37,99,235,',   border: 'rgba(37,99,235,0.25)',   text: '#93c5fd' },
     { id: 'Fechamento',   label: 'Fechamento',     accent: 'rgba(59,130,246,',  border: 'rgba(59,130,246,0.25)',  text: '#60a5fa' },
     { id: 'Follow-up',    label: 'Follow-up',      accent: 'rgba(34,211,238,',  border: 'rgba(34,211,238,0.25)',  text: '#67e8f9' },
-    { id: 'Em Análise',   label: 'Em Análise',     accent: 'rgba(244,63,94,',   border: 'rgba(244,63,94,0.25)',   text: '#fda4af' },
     { id: 'Ganho',        label: 'Ganhos',         accent: 'rgba(16,185,129,',  border: 'rgba(16,185,129,0.25)', text: '#6ee7b7' },
 ];
 
@@ -291,10 +290,14 @@ export const Dashboard = React.memo(function Dashboard({ leads, consultores, pol
     const stats = useDashboardStats(leads, consultores);
 
     const funnelStats = useMemo(() => {
-        const ordem = CONFIG_ETAPAS.map(c => c.id);
-        return CONFIG_ETAPAS.map((cfg, idx) => {
-            const subs = ordem.slice(idx);
-            return { ...cfg, count: leads.filter(l => subs.includes(l.status)).length };
+        // Sequência lógica completa (mesmo com itens ocultos no gráfico)
+        const sequenciaCompleta = ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em Análise', 'Ganho'];
+        
+        return CONFIG_ETAPAS.map((cfg) => {
+            const idxNaSequencia = sequenciaCompleta.indexOf(cfg.id);
+            // Pega todos os status que vêm depois desse na sequência real
+            const statusSubsequentes = sequenciaCompleta.slice(idxNaSequencia);
+            return { ...cfg, count: leads.filter(l => statusSubsequentes.includes(l.status)).length };
         });
     }, [leads]);
 
@@ -375,26 +378,46 @@ export const Dashboard = React.memo(function Dashboard({ leads, consultores, pol
                 </div>
                 <div className="flex items-stretch justify-between gap-1 lg:gap-2 overflow-x-auto no-scrollbar pb-2 relative z-10">
                     {funnelStats.map((step, idx) => {
-                        const prevCount = idx === 0 ? step.count : funnelStats[idx - 1].count;
-                        const conv = prevCount > 0 ? Math.round((step.count / prevCount) * 100) : 0;
+                        const nextStep = idx < funnelStats.length - 1 ? funnelStats[idx + 1] : null;
+                        const convEtapa = nextStep ? (step.count > 0 ? Math.round((nextStep.count / step.count) * 100) : 0) : 0;
+                        const convGlobal = funnelStats[0].count > 0 ? Math.round((step.count / funnelStats[0].count) * 100) : 0;
+                        
                         return (
                             <React.Fragment key={step.id}>
-                                <div className="flex-1 min-w-[100px] lg:min-w-[115px] p-3 lg:p-4 rounded-2xl relative overflow-hidden transition-all duration-200 hover:scale-[1.03] cursor-default"
+                                <div className="flex-1 min-w-[100px] lg:min-w-[125px] p-3 lg:p-4 rounded-2xl relative overflow-hidden transition-all duration-200 hover:scale-[1.03] cursor-default"
                                     style={{ background: `${step.accent}0.10)`, border: `1px solid ${step.border}`, boxShadow: `0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px ${step.border}` }}>
                                     <div className="absolute -bottom-4 -right-4 w-12 h-12 lg:w-16 lg:h-16 rounded-full pointer-events-none"
                                         style={{ background: `${step.accent}0.12)`, filter: 'blur(16px)' }} />
-                                    <p className="text-[8px] lg:text-[9px] font-black uppercase tracking-widest opacity-70 truncate mb-1 lg:mb-2" style={{ color: step.text }}>{step.label}</p>
+                                    
+                                    <div className="flex justify-between items-start mb-1 lg:mb-2">
+                                        <p className="text-[8px] lg:text-[9px] font-black uppercase tracking-widest opacity-70 truncate" style={{ color: step.text }}>{step.label}</p>
+                                        {idx > 0 && (
+                                            <span className="text-[7px] lg:text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/50 whitespace-nowrap shrink-0 ml-1">
+                                                {convGlobal}% GLOBAL
+                                            </span>
+                                        )}
+                                    </div>
+
                                     <p className="text-xl lg:text-3xl font-black font-mono leading-none" style={{ color: step.text, textShadow: `0 0 20px ${step.accent}0.6)` }}>
                                         {step.count}
                                     </p>
                                 </div>
                                 {idx < funnelStats.length - 1 && (
-                                    <div className="flex flex-col items-center justify-center gap-1 shrink-0 px-0.5">
-                                        <span className="text-[8px] font-black font-mono text-slate-400 px-1.5 py-0.5 rounded-md"
-                                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            {conv}%
+                                    <div className="flex flex-col items-center justify-center gap-1.5 shrink-0 px-1 min-w-[40px] lg:min-w-[50px]">
+                                        <div className="w-8 h-3 opacity-30">
+                                            <svg viewBox="0 0 40 20" fill="none" className="w-full h-full text-slate-400">
+                                                <path d="M2 15 Q 20 -5 38 15" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                                                <path d="M33 11 L 38 15 L 33 19" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-[10px] lg:text-[12px] font-black text-white/90 font-mono px-2 py-1 rounded-lg"
+                                            style={{ 
+                                                background: 'rgba(255,255,255,0.08)', 
+                                                border: '1px solid rgba(255,255,255,0.12)',
+                                                backdropFilter: 'blur(8px)'
+                                            }}>
+                                            {convEtapa}%
                                         </span>
-                                        <ArrowRight className="w-3 h-3 text-slate-600" />
                                     </div>
                                 )}
                             </React.Fragment>

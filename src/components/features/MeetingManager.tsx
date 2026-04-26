@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, History, Plus, MessageCircle, AlertCircle } from 'lucide-react';
 import { Lead, Reuniao } from '../../types';
+import { formatDate, parseDateInput } from '../../utils/helpers';
 import { SectionTitle } from '../ui/SectionTitle';
 import { Field } from '../ui/Field';
 
@@ -33,7 +34,7 @@ export const MeetingManager: React.FC<Props> = ({
                 {novaReuniao && (
                     <div className="p-7 rounded-2xl mb-8 animate-in" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.22)', boxShadow: '0 0 30px rgba(37,99,235,0.10)' }}>
                         <div className="grid grid-cols-2 gap-8 mb-8">
-                            <Field label="Data"><input type="date" className={`${inputCls} bg-[#111827] font-mono p-4 rounded-xl border border-slate-700`} onChange={e => setNovaReuniao({ ...novaReuniao, data: e.target.value })} value={novaReuniao.data || ''} /></Field>
+                            <Field label="Data"><input type="text" className={`${inputCls} bg-[#111827] font-mono p-4 rounded-xl border border-slate-700`} maxLength={10} onChange={e => setNovaReuniao({ ...novaReuniao, data: parseDateInput(e.target.value) })} value={formatDate(novaReuniao.data)} placeholder="DD/MM/AAAA" /></Field>
                             <Field label="Status">
                                 <select className={selectCls} style={selectStyle} value={novaReuniao.status} onChange={e => setNovaReuniao({ ...novaReuniao, status: e.target.value as Reuniao['status'] })}>
                                     <option value="Agendada">Agendada</option><option value="Realizada">Realizada</option><option value="Remarcada">Remarcada</option><option value="No-Show">No-Show</option>
@@ -70,7 +71,7 @@ export const MeetingManager: React.FC<Props> = ({
                                     <h4 className="text-[13px] font-bold text-white">{r.titulo}</h4>
                                     <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded" style={badgeStyle}>{r.status}</span>
                                 </div>
-                                <p className="text-[10px] font-mono mb-2" style={{ color: '#475569' }}>{r.data}</p>
+                                <p className="text-[10px] font-mono mb-2" style={{ color: '#475569' }}>{formatDate(r.data)}</p>
                                 {r.anotacoes && <p className="text-[12px] leading-relaxed p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#cbd5e1' }}>{r.anotacoes}</p>}
                             </div>
                         );

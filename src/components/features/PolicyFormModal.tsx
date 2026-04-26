@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText } from 'lucide-react';
 import { Policy, PolicyStatus, Seguradora, SEGURADORAS, POLICY_STATUSES, Lead } from '../../types';
+import { formatDate, parseDateInput } from '../../utils/helpers';
 import { toast } from '../../utils/toast';
 
 const INITIAL_FORM: Omit<Policy, 'id' | 'criadoEm'> = {
     numero: '',
     seguradora: 'Azos',
     nomeCliente: '',
-    dataEmissao: new Date().toISOString().split('T')[0], // Data de hoje como padrão
+    dataEmissao: new Date().toLocaleDateString('pt-BR'), // Data de hoje como padrão
     valorPremio: 0,
     status: 'Ativa',
     linkDrive: '',
@@ -250,12 +251,14 @@ export const PolicyFormModal: React.FC<Props> = ({ isOpen, editing, onClose, onS
                         <div>
                             <label className={labelCls}>Data de Emissão *</label>
                             <input
-                                type="date"
+                                type="text"
                                 required
                                 className={`${inputCls} font-mono`}
                                 style={{ ...inputStyle, color: '#60a5fa' }}
-                                value={form.dataEmissao}
-                                onChange={e => set('dataEmissao', e.target.value)}
+                                value={formatDate(form.dataEmissao)}
+                                maxLength={10}
+                                onChange={e => set('dataEmissao', parseDateInput(e.target.value))}
+                                placeholder="DD/MM/AAAA"
                             />
                         </div>
                         <div className="relative">

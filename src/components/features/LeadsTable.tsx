@@ -116,10 +116,29 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                 const daysB = getDaysInStage(b);
                 valA = (isNaN(Number(daysA)) || daysA === null) ? 0 : Number(daysA);
                 valB = (isNaN(Number(daysB)) || daysB === null) ? 0 : Number(daysB);
+            } else if (sortKey === 'acao') {
+                const parseDateString = (d?: string) => {
+                    if (!d) return 0;
+                    if (d.includes('/')) {
+                        const [day, month, year] = d.split('/').map(Number);
+                        return new Date(year, month - 1, day).getTime();
+                    }
+                    if (d.includes('-')) return new Date(d).getTime();
+                    return 0;
+                };
+                valA = parseDateString(a.dataAcao);
+                valB = parseDateString(b.dataAcao);
+                
+                // Secondary sort by action name if dates are equal
+                if (valA === valB) {
+                    valA = a.acao || '';
+                    valB = b.acao || '';
+                }
             } else {
                 valA = (a as any)[sortKey] ?? '';
                 valB = (b as any)[sortKey] ?? '';
             }
+
             if (typeof valA === 'string') return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             return sortDir === 'asc' ? valA - valB : valB - valA;
         });

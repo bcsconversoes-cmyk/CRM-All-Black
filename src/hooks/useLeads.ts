@@ -85,7 +85,7 @@ export function useLeads() {
             `De "${lead.status}" → "${newStatus}" em ${nowBr}`,
             ...(lead.historico || [])
         ];
-        const todayIso = now.toISOString().split('T')[0]; // YYYY-MM-DD para o banco
+        const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; // Data LOCAL para o banco
 
         // 1. Atualiza a UI imediatamente (Optimistic UI)
         setLeads(prev => prev.map(l =>

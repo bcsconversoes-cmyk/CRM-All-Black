@@ -4,7 +4,7 @@ import { Activity, AlertCircle, MessageCircle, Send, ChevronDown, User, External
 import { Lead, STAGES } from '../../types';
 import { SectionTitle } from '../ui/SectionTitle';
 import { Field } from '../ui/Field';
-import { getWhatsAppLink, getSnippets, getClientWhatsAppMessage, getConsultantWhatsAppMessage } from '../../utils/helpers';
+import { getWhatsAppLink, getSnippets, getClientWhatsAppMessage, getConsultantWhatsAppMessage, formatDate, parseDateInput } from '../../utils/helpers';
 import { toast } from '../../utils/toast';
 
 // ─── Mapeamento estrito de Ações por Status ─────────────────────────────────
@@ -370,10 +370,12 @@ export const ActionManager: React.FC<Props> = ({ lead, handleUpdateLead, handleR
                         <div className="col-span-2 md:col-span-1 animate-in fade-in slide-in-from-bottom-2">
                             <Field label={lead.status === 'Follow-up' ? 'Data do Follow-up' : 'Data Agendada'}>
                                 <input
-                                    type="date"
+                                    type="text"
                                     className={`${inputCls} bg-[#0b1426] font-mono text-[#60a5fa] p-4 rounded-xl border border-blue-500/20 shadow-[0_0_15px_rgba(37,99,235,0.1)]`}
-                                    value={lead.dataAcao || ''}
-                                    onChange={e => handleUpdateLead({ dataAcao: e.target.value })}
+                                    value={formatDate(lead.dataAcao)}
+                                    maxLength={10}
+                                    onChange={e => handleUpdateLead({ dataAcao: parseDateInput(e.target.value) })}
+                                    placeholder="DD/MM/AAAA"
                                 />
                             </Field>
                         </div>

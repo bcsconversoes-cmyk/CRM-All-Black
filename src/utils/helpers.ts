@@ -14,26 +14,16 @@ export const getVal = (obj: any, possibleKeys: string[]) => {
   return '';
 };
 
-export const getBusinessDays = (startDate: Date, endDate: Date) => {
-  let count = 0;
-  const curDate = new Date(startDate);
-  
-  // Normalizar horário para evitar problemas de fuso
-  curDate.setHours(0, 0, 0, 0);
+export const getElapsedDays = (startDate: Date, endDate: Date) => {
+  // Usamos o meio-dia (12:00) para evitar problemas de fuso horário e horário de verão
+  const start = new Date(startDate);
+  start.setHours(12, 0, 0, 0);
   const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-
-  if (curDate > end) return 0; // se startDate estiver no futuro, 0 dias de atraso
-
-  while (curDate < end) {
-    curDate.setDate(curDate.getDate() + 1);
-    const dayOfWeek = curDate.getDay();
-    // Excluir domingos (0) e sábados (6)
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-  }
-  return count;
+  end.setHours(12, 0, 0, 0);
+  
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
 };
 
 export const formatMoney = (v: number | string | null | undefined) => {
@@ -109,7 +99,7 @@ export const getDaysInStage = (lead: Lead) => {
       const resetDate = new Date(Number(y), Number(m) - 1, Number(d));
       resetDate.setHours(0, 0, 0, 0);
       const now = new Date(); now.setHours(0, 0, 0, 0);
-      return getBusinessDays(resetDate, now);
+      return getElapsedDays(resetDate, now);
     }
   }
 
@@ -129,17 +119,18 @@ export const getDaysInStage = (lead: Lead) => {
     now.setHours(0, 0, 0, 0);
 
     let targetDate: Date;
-    if (String(dateStr).includes('T')) {
-      targetDate = new Date(dateStr);
+    // Forçamos o parsing para tratar strings ISO (YYYY-MM-DD) como data LOCAL, não UTC
+    const parts = String(dateStr).split(' ')[0].split(/[\/\-]/);
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      targetDate = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     } else {
-      const parts = String(dateStr).split(' ')[0].split(/[\/\-]/);
-      targetDate = parts[0].length === 4
-        ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
-        : new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      // DD/MM/YYYY
+      targetDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
     }
     targetDate.setHours(0, 0, 0, 0);
 
-    return getBusinessDays(targetDate, now);
+    return getElapsedDays(targetDate, now);
   } catch { return 0; }
 };
 

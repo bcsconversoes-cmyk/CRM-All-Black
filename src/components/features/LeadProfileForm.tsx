@@ -7,6 +7,8 @@ import { Field } from '../ui/Field';
 
 interface Props {
     lead: Lead;
+    showSensitiveData: boolean;
+    
     handleUpdateLead: (updates: Partial<Lead>) => void;
 }
 
@@ -14,7 +16,7 @@ const inputCls = "w-full bg-transparent border-b border-white/[0.08] px-0 py-3 t
 const selectCls = "w-full cursor-pointer appearance-none bg-[#0d1526] border border-white/[0.10] rounded-xl px-4 py-3 pr-10 text-slate-100 text-[13px] font-medium outline-none focus:border-blue-500/60 transition-colors";
 const selectStyle = { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' };
 
-export const LeadProfileForm: React.FC<Props> = ({ lead, handleUpdateLead }) => {
+export const LeadProfileForm: React.FC<Props> = ({ lead, handleUpdateLead, showSensitiveData }) => {
     return (
         <>
             {/* IDENTIFICAÇÃO E BIOMETRIA */}
@@ -48,23 +50,41 @@ export const LeadProfileForm: React.FC<Props> = ({ lead, handleUpdateLead }) => 
                         </div>
                     </div>
                 </div>
+
+                {showSensitiveData && (
+                    <div className="grid grid-cols-2 gap-8 pt-4 border-t border-white/5 animate-in fade-in duration-300">
+                        <Field label="Documento (CPF)"><input className={`${inputCls} font-mono`} value={lead.cpf || ''} onChange={e => handleUpdateLead({ cpf: e.target.value })} /></Field>
+                        <Field label="E-mail"><input className={inputCls} value={lead.email || ''} onChange={e => handleUpdateLead({ email: e.target.value })} /></Field>
+                    </div>
+                )}
+
             </div>
 
             {/* DADOS PESSOAIS E CONTATO */}
             <div className="glass-card p-7 space-y-6">
                 <SectionTitle icon={Link2} title="Dados Pessoais & Contato" />
                 <div className="grid grid-cols-2 gap-8">
-                    <Field label="Documento (CPF)"><input className={`${inputCls} font-mono`} value={lead.cpf || ''} onChange={e => handleUpdateLead({ cpf: e.target.value })} /></Field>
-                    <Field label="Estado Civil"><select className={selectCls} style={selectStyle} value={lead.estadoCivil || 'Solteiro(a)'} onChange={e => handleUpdateLead({ estadoCivil: e.target.value })}><option>Solteiro(a)</option><option>Casado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option><option>União Estável</option></select></Field>
+                    <Field label="Estado Civil">
+                        <select className={selectCls} style={selectStyle} value={lead.estadoCivil || 'Solteiro(a)'} onChange={e => handleUpdateLead({ estadoCivil: e.target.value })}>
+                            <option>Solteiro(a)</option><option>Casado(a)</option><option>Divorciado(a)</option><option>Viúvo(a)</option><option>União Estável</option>
+                        </select>
+                    </Field>
+                    <Field label="Vínculo">
+                        <select className={selectCls} style={selectStyle} value={lead.tipoRenda || ''} onChange={e => handleUpdateLead({ tipoRenda: e.target.value })}>
+                            <option value="">Selecione...</option>
+                            <option value="Empresário">Empresário</option>
+                            <option value="Autônomo / Profissional Liberal">Autônomo / Profissional Liberal</option>
+                            <option value="CLT">CLT</option>
+                            <option value="Servidor Público">Servidor Público</option>
+                            <option value="Aposentado / Pensionista">Aposentado / Pensionista</option>
+                        </select>
+                    </Field>
                 </div>
                 <div className="grid grid-cols-2 gap-8">
                     <Field label="Profissão"><input className={inputCls} value={lead.profissao || ''} onChange={e => handleUpdateLead({ profissao: e.target.value })} /></Field>
-                    <Field label="Vínculo"><select className={selectCls} style={selectStyle} value={lead.tipoRenda || ''} onChange={e => handleUpdateLead({ tipoRenda: e.target.value })}><option value="">Selecione...</option><option value="CLT">CLT</option><option value="Empresário">Empresário</option><option value="Autônomo">Autônomo</option><option value="Autônomo / Profissional Liberal">Autônomo / Profissional Liberal</option><option value="Autônomo / Pró-labore">Autônomo / Pró-labore</option><option value="PJ / Pessoa Jurídica">PJ / Pessoa Jurídica</option><option value="Servidor Público">Servidor Público</option><option value="Aposentado / Pensionista">Aposentado / Pensionista</option></select></Field>
-                </div>
-                <div className="grid grid-cols-2 gap-8">
                     <Field label="WhatsApp"><input className={`${inputCls} font-mono`} value={lead.celular || ''} onChange={e => handleUpdateLead({ celular: formatPhone(e.target.value) })} /></Field>
-                    <Field label="E-mail"><input className={inputCls} value={lead.email || ''} onChange={e => handleUpdateLead({ email: e.target.value })} /></Field>
                 </div>
+
                 <Field label="Link de Oportunidade (Salesforce)"><input className={inputCls} placeholder="https://..." value={lead.salesforceUrl || ''} onChange={e => handleUpdateLead({ salesforceUrl: e.target.value })} /></Field>
             </div>
         </>
