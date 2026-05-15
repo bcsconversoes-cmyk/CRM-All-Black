@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Layout, BarChart3, User, Plus, Search, FileText } from 'lucide-react';
+import { Layout, BarChart3, User, Search } from 'lucide-react';
 
 interface TopNavigationProps {
-    activeTab: 'leads' | 'dashboard' | 'apolices';
-    setActiveTab: (tab: 'leads' | 'dashboard' | 'apolices') => void;
+    activeTab: 'leads' | 'dashboard';
+    setActiveTab: (tab: 'leads' | 'dashboard') => void;
     setShowConsultantManager: (show: boolean) => void;
     setShowNewLeadModal: (show: boolean) => void;
     globalSearch: string;
@@ -47,7 +47,6 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({
                     {[
                         { id: 'dashboard', label: 'Dashboard', Icon: BarChart3 },
                         { id: 'leads',     label: 'Leads',     Icon: Layout },
-                        { id: 'apolices',  label: 'Apólices',  Icon: FileText },
                     ].map(({ id, label, Icon }) => (
                         <button
                             key={id}

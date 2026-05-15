@@ -19,10 +19,6 @@ import { ConsultantManagerModal } from './components/features/ConsultantManagerM
 import { AuthScreen } from './components/ui/AuthScreen';
 import { TopNavigation } from './components/features/TopNavigation';
 import { LossReasonModal } from './components/features/LossReasonModal';
-import { usePolicies } from './hooks/usePolicies';
-import { PolicyTable } from './components/features/PolicyTable';
-import { PolicyFormModal } from './components/features/PolicyFormModal';
-import { Policy } from './types';
 import { Toast } from './components/ui/Toast';
 
 export default function App() {
@@ -39,18 +35,11 @@ export default function App() {
         updateLeadInline
     } = useLeads();
 
-    const [activeTab, setActiveTab] = useState<'leads' | 'dashboard' | 'apolices'>('leads');
+    const [activeTab, setActiveTab] = useState<'leads' | 'dashboard'>('leads');
     const [globalSearch, setGlobalSearch] = useState('');
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [showNewLeadModal, setShowNewLeadModal] = useState(false);
     const [showConsultantManager, setShowConsultantManager] = useState(false);
-
-    // Apólices
-    const { policies, loading: policiesLoading, loadPolicies, addPolicy, editPolicy, removePolicy } = usePolicies();
-    const [showPolicyForm, setShowPolicyForm] = useState(false);
-    const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
-    const [policiesLoaded, setPoliciesLoaded] = useState(false);
-    const [policySearch, setPolicySearch] = useState('');
 
     // Auth State
     const [isAuthenticated, setIsAuthenticated] = useState(true);
@@ -65,14 +54,6 @@ export default function App() {
             loadLeads(false);
         }
     }, [loadLeads, isAuthenticated]);
-
-    // Carrega apólices na 1ª vez que o usuário entra na aba (lazy load)
-    useEffect(() => {
-        if (activeTab === 'apolices' && isAuthenticated && !policiesLoaded) {
-            loadPolicies();
-            setPoliciesLoaded(true);
-        }
-    }, [activeTab, isAuthenticated, policiesLoaded, loadPolicies]);
 
     if (!isAuthenticated) {
         return <AuthScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
@@ -90,9 +71,6 @@ export default function App() {
                     setActiveTab('leads');
                     e.preventDefault();
                 } else if (e.key === '3') {
-                    setActiveTab('apolices');
-                    e.preventDefault();
-                } else if (e.key === '4') {
                     setShowConsultantManager(prev => !prev);
                     e.preventDefault();
                 }
@@ -171,7 +149,7 @@ export default function App() {
             contactado: '[✅ DASHBOARD] Contactado — tarefa rápida',
             agendar: '[✅ DASHBOARD] Status atualizado: marcado como Agendar',
             adiar: '[⏰ DASHBOARD] Adiado 1 dia',
-            alinhado: '[✅ DASHBOARD] Alinhadocom Consultor',
+            alinhado: '[✅ DASHBOARD] Alinhado com Consultor',
         };
 
         const updates: Partial<Lead> = {
@@ -180,7 +158,7 @@ export default function App() {
                 `${actionLabel[action]} em ${nowBr}`,
                 ...(lead.historico || []),
             ],
-            // dataUltimoStatus só existe no estado local, não no banco (removido pelo leadService)
+            // dataUltimoStatus só existe no estado local; a persistência do SLA vem da tag no histórico.
             ...((action === 'contactado' || action === 'alinhado') && { dataUltimoStatus: nowDateBr }),
             ...(action === 'agendar'    && { acao: 'Agendar', dataUltimoStatus: nowDateBr }),
             ...(action === 'adiar'      && { dataUltimoStatus: tomorrowDateBr }),
@@ -208,20 +186,11 @@ export default function App() {
             {loading ? (
                 activeTab === 'dashboard' ? <DashboardSkeleton /> : <TableSkeleton />
             ) : activeTab === 'dashboard' ? (
-                <Dashboard leads={leads} consultores={consultores} policies={policies} openLead={setSelectedLead} onQuickAction={handleDashboardQuickAction} />
-            ) : activeTab === 'apolices' ? (
-                <PolicyTable
-                    policies={policies}
-                    loading={policiesLoading}
-                    initialSearch={policySearch}
-                    onNew={() => { setEditingPolicy(null); setShowPolicyForm(true); }}
-                    onEdit={(p) => { setEditingPolicy(p); setShowPolicyForm(true); }}
-                    onDelete={removePolicy}
-                    onRefresh={loadPolicies}
-                />
+                <Dashboard leads={leads} consultores={consultores} openLead={setSelectedLead} onQuickAction={handleDashboardQuickAction} />
             ) : (
                 <LeadsTable
                     leads={filteredLeads}
+                    consultores={consultores}
                     globalSearch={globalSearch}
                     setSelectedLead={setSelectedLead}
                     updateLeadStatus={updateLeadStatus}
@@ -237,13 +206,6 @@ export default function App() {
                     setLeads={setLeads}
                     consultores={consultores}
                     setConsultores={setConsultores}
-                    onViewPolicies={(nome: string) => {
-                        setPolicySearch(nome);
-                        setActiveTab('apolices');
-                        setSelectedLead(null);
-                        setShowNewLeadModal(false);
-                    }}
-                    policies={policies}
                 />
             )}
 
@@ -261,18 +223,6 @@ export default function App() {
                 setLossReason={setLossReason}
                 onClose={() => { setLossModalState({ isOpen: false, lead: null, newStatus: '' }); setLossReason(''); }}
                 onConfirm={confirmLossStatus}
-            />
-
-            {/* Modal de Apólices */}
-            <PolicyFormModal
-                isOpen={showPolicyForm}
-                editing={editingPolicy}
-                onClose={() => { setShowPolicyForm(false); setEditingPolicy(null); }}
-                leads={leads}
-                onSave={editingPolicy
-                    ? (data: any) => editPolicy(editingPolicy.id, data)
-                    : addPolicy
-                }
             />
 
             <Toast />

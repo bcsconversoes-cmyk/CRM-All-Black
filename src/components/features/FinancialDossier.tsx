@@ -1,5 +1,5 @@
-import React from 'react';
-import { DollarSign, Shield } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { DollarSign, GraduationCap, Landmark, PiggyBank, TrendingDown, TrendingUp, Users, WalletCards } from 'lucide-react';
 import { Lead } from '../../types';
 import { formatMoney } from '../../utils/helpers';
 import { SectionTitle } from '../ui/SectionTitle';
@@ -10,74 +10,93 @@ interface Props {
     handleUpdateLead: (updates: Partial<Lead>) => void;
 }
 
-const inputCls = "w-full bg-transparent border-b border-white/[0.08] px-0 py-3 text-slate-100 text-[13px] outline-none focus:border-blue-500/60 transition-colors font-medium placeholder:text-slate-600 rounded-none";
-const selectCls = "w-full cursor-pointer appearance-none bg-[#0d1526] border border-white/[0.10] rounded-xl px-4 py-3 pr-10 text-slate-100 text-[13px] font-medium outline-none focus:border-blue-500/60 transition-colors";
-const selectStyle = { backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' };
+const inputCls = "w-full h-11 bg-[#0b1222] border border-white/[0.08] rounded-xl px-3 text-slate-100 text-[13px] outline-none focus:border-blue-500/60 transition-colors font-semibold placeholder:text-slate-600";
+
+const parseMoney = (value: string) => {
+    const parsed = parseInt(value.replace(/\D/g, ''), 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const FinancialTile = ({
+    label,
+    tone,
+    icon: Icon,
+    children,
+}: {
+    label: string;
+    tone: string;
+    icon: React.ElementType;
+    children: React.ReactNode;
+}) => (
+    <div className="rounded-2xl bg-white/[0.025] border border-white/[0.07] p-4 space-y-3 min-w-0">
+        <div className="flex items-center justify-between gap-3">
+            <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">{label}</span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${tone}`}>
+                <Icon size={15} />
+            </div>
+        </div>
+        {children}
+    </div>
+);
 
 export const FinancialDossier: React.FC<Props> = ({ lead, handleUpdateLead }) => {
+    const sobraMensal = useMemo(() => (Number(lead.renda) || 0) - (Number(lead.despesas) || 0), [lead.renda, lead.despesas]);
+    const comprometimento = useMemo(() => {
+        const renda = Number(lead.renda) || 0;
+        if (!renda) return 0;
+        return Math.round(((Number(lead.despesas) || 0) / renda) * 100);
+    }, [lead.renda, lead.despesas]);
+
     return (
-        <>
-            {/* FINANCEIRO */}
-            <div className="glass-card p-7 space-y-6 lg:col-span-2">
-                <SectionTitle icon={DollarSign} title="Indicadores Financeiros Globais" />
+        <div className="glass-card p-6 lg:p-7 space-y-6 lg:col-span-2">
+            <SectionTitle icon={DollarSign} title="Indicadores Financeiros" subtitle="Renda, despesas, patrimônio e capacidade" />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <Field label="Renda Mensal (R$)"><input className={`${inputCls} text-emerald-400 font-mono`} value={formatMoney(lead.renda)} onChange={e => handleUpdateLead({ renda: isNaN(parseInt(e.target.value.replace(/\D/g, ''))) ? 0 : parseInt(e.target.value.replace(/\D/g, '')) })} /></Field>
-                    <Field label="Despesas (R$)"><input className={`${inputCls} text-rose-400 font-mono`} value={formatMoney(lead.despesas)} onChange={e => handleUpdateLead({ despesas: isNaN(parseInt(e.target.value.replace(/\D/g, ''))) ? 0 : parseInt(e.target.value.replace(/\D/g, '')) })} /></Field>
-                    <Field label="Patrimônio Total"><input className={`${inputCls} text-blue-400 font-mono`} value={formatMoney(lead.patrimonio)} onChange={e => handleUpdateLead({ patrimonio: isNaN(parseInt(e.target.value.replace(/\D/g, ''))) ? 0 : parseInt(e.target.value.replace(/\D/g, '')) })} /></Field>
-                    <Field label="Previdência Privada"><input className={`${inputCls} font-mono`} value={formatMoney(lead.previdencia)} onChange={e => handleUpdateLead({ previdencia: isNaN(parseInt(e.target.value.replace(/\D/g, ''))) ? 0 : parseInt(e.target.value.replace(/\D/g, '')) })} /></Field>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <FinancialTile label="Renda mensal" tone="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" icon={TrendingUp}>
+                    <input className={`${inputCls} text-emerald-300 font-mono`} value={formatMoney(lead.renda)} onChange={e => handleUpdateLead({ renda: parseMoney(e.target.value) })} />
+                </FinancialTile>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    <Field label="Pilar Financeiro"><input className={inputCls} placeholder="Ex: Provedor Principal..." value={lead.pilarFinanceiro || ''} onChange={e => handleUpdateLead({ pilarFinanceiro: e.target.value })} /></Field>
-                    <Field label="Filhos"><input type="number" className={`${inputCls} font-mono`} value={lead.quantosFilhos !== undefined && lead.quantosFilhos !== null ? lead.quantosFilhos : ''} onChange={e => handleUpdateLead({ quantosFilhos: +e.target.value })} /></Field>
-                    <Field label="Custos Educacionais"><input className={`${inputCls} font-mono`} value={formatMoney(lead.educacaoFilhos)} onChange={e => handleUpdateLead({ educacaoFilhos: isNaN(parseInt(e.target.value.replace(/\D/g, ''))) ? 0 : parseInt(e.target.value.replace(/\D/g, '')) })} /></Field>
-                </div>
+                <FinancialTile label="Despesas mensais" tone="bg-rose-500/10 text-rose-400 border border-rose-500/20" icon={TrendingDown}>
+                    <input className={`${inputCls} text-rose-300 font-mono`} value={formatMoney(lead.despesas)} onChange={e => handleUpdateLead({ despesas: parseMoney(e.target.value) })} />
+                </FinancialTile>
+
+                <FinancialTile label="Patrimônio total" tone="bg-blue-500/10 text-blue-400 border border-blue-500/20" icon={Landmark}>
+                    <input className={`${inputCls} text-blue-300 font-mono`} value={formatMoney(lead.patrimonio)} onChange={e => handleUpdateLead({ patrimonio: parseMoney(e.target.value) })} />
+                </FinancialTile>
+
+                <FinancialTile label="Previdência privada" tone="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" icon={PiggyBank}>
+                    <input className={`${inputCls} font-mono`} value={formatMoney(lead.previdencia)} onChange={e => handleUpdateLead({ previdencia: parseMoney(e.target.value) })} />
+                </FinancialTile>
             </div>
 
-            {/* DOSSIÊ */}
-            <div className="glass-card p-7 space-y-6 lg:col-span-2">
-                <SectionTitle icon={Shield} title="Dossiê de Proteção & Observações" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                            <span className="text-[11px] text-slate-300 font-bold uppercase tracking-widest">Possui Seguro de Vida?</span>
-                            <input type="checkbox" className="w-5 h-5 accent-blue-500 rounded" checked={Boolean(lead.possuiSeguro)} onChange={e => handleUpdateLead({ possuiSeguro: e.target.checked })} />
-                        </div>
-                        {Boolean(lead.possuiSeguro) && (
-                            <Field label="Seguradora Emissora">
-                                <select className={selectCls} style={selectStyle} value={lead.seguradora || ''} onChange={e => handleUpdateLead({ seguradora: e.target.value })}><option value="">Selecione...</option><option value="Azos">Azos</option><option value="MAG">MAG</option><option value="Icatu">Icatu</option><option value="Prudential">Prudential</option><option value="Outra">Outra</option></select>
-                            </Field>
-                        )}
-                        <Field label="Histórico Médico (DPS)">
-                            <textarea className={`${inputCls} min-h-[100px] bg-[#0B1121] p-4 rounded-xl border border-slate-800`} value={lead.problemasSaude || ''} onChange={e => handleUpdateLead({ problemasSaude: e.target.value })} placeholder="Registre aqui doenças pré-existentes, cirurgias, uso de medicamentos..." />
-                            {!lead.problemasSaude && <p className="text-[9px] mt-1 italic" style={{ color: '#475569' }}>Nenhum histórico médico registrado.</p>}
-                        </Field>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="rounded-2xl bg-white/[0.025] border border-white/[0.07] p-4">
+                    <Field label="Custos educacionais" icon={GraduationCap}>
+                        <input className={`${inputCls} font-mono`} value={formatMoney(lead.educacaoFilhos)} onChange={e => handleUpdateLead({ educacaoFilhos: parseMoney(e.target.value) })} />
+                    </Field>
+                </div>
+
+                <div className="rounded-2xl bg-cyan-500/[0.04] border border-cyan-500/15 p-4 flex flex-col justify-between min-h-[94px]">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-[9px] font-black uppercase text-cyan-200/70 tracking-widest">Leitura rápida</span>
+                        <WalletCards size={15} className="text-cyan-300" />
                     </div>
-                    <div className="space-y-6">
-                        <Field label="Diagnóstico Comercial & Pitch">
-                            {/* Exibe informações compiladas de necessidadeSeguro e infosRelevantes acima do campo editável */}
-                            {(lead.necessidadeSeguro || lead.infosRelevantes) && (
-                                <div className="mb-3 p-4 rounded-xl space-y-3" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
-                                    {lead.necessidadeSeguro && (
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: '#60a5fa' }}>Por que precisa de seguro?</p>
-                                            <p className="text-[12px] leading-relaxed" style={{ color: '#cbd5e1' }}>{lead.necessidadeSeguro}</p>
-                                        </div>
-                                    )}
-                                    {lead.infosRelevantes && (
-                                        <div>
-                                            <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: '#60a5fa' }}>Informações Relevantes</p>
-                                            <p className="text-[12px] leading-relaxed" style={{ color: '#cbd5e1' }}>{lead.infosRelevantes}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            <textarea className={`${inputCls} min-h-[140px] bg-[#0B1121] p-4 rounded-xl border border-slate-800`} value={lead.observacoes || ''} onChange={e => handleUpdateLead({ observacoes: e.target.value })} placeholder="Notas do operador, estratégia de abordagem, objeções..." />
-                        </Field>
+                    <div>
+                        <div className={`font-mono text-xl font-black ${sobraMensal >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{formatMoney(sobraMensal)}</div>
+                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{comprometimento}% comprometido</div>
                     </div>
                 </div>
+                <div className="rounded-2xl bg-white/[0.025] border border-white/[0.07] p-4">
+                    <Field label="Filhos" icon={Users}>
+                        <input type="number" className={`${inputCls} font-mono`} value={lead.quantosFilhos ?? ''} onChange={e => handleUpdateLead({ quantosFilhos: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0 })} />
+                    </Field>
+                </div>
+                <div className="rounded-2xl bg-white/[0.025] border border-white/[0.07] p-4">
+                    <Field label="Pilar financeiro">
+                        <input className={inputCls} value={lead.pilarFinanceiro || ''} onChange={e => handleUpdateLead({ pilarFinanceiro: e.target.value })} />
+                    </Field>
+                </div>
             </div>
-        </>
+        </div>
     );
 };

@@ -5,7 +5,7 @@ import { X, Search, User, MessageCircle, MessageSquare, Power, Save, AlertCircle
 import { Consultor, Lead } from '../../types';
 import { formatPhone, getWhatsAppLink, formatDate, checkSLA } from '../../utils/helpers';
 import { toast } from '../../utils/toast';
-import { updateConsultor, deleteConsultor } from '../../services/leadService';
+import { updateConsultor, deleteConsultor, createConsultor } from '../../services/leadService';
 interface Props {
     isOpen: boolean;
     onClose: () => void;
@@ -21,6 +21,7 @@ export const ConsultantManagerModal: React.FC<Props> = ({ isOpen, onClose, consu
     const [editData, setEditData] = useState<Partial<Consultor>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [novoConsultorNome, setNovoConsultorNome] = useState('');
 
     // Filtragem Regex e Ordem Alfabética
     const filteredConsultores = useMemo(() => {
@@ -119,6 +120,19 @@ export const ConsultantManagerModal: React.FC<Props> = ({ isOpen, onClose, consu
         }
     };
 
+    const handleCreateConsultor = async () => {
+        if (!novoConsultorNome.trim()) return;
+        setError(null);
+        try {
+            await createConsultor(novoConsultorNome.trim());
+            setNovoConsultorNome('');
+            onUpdate();
+            toast.success('Consultor cadastrado com sucesso!');
+        } catch (err: any) {
+            setError(err.message || 'Erro ao cadastrar consultor');
+        }
+    };
+
 
 
     if (!isOpen) return null;
@@ -146,6 +160,21 @@ export const ConsultantManagerModal: React.FC<Props> = ({ isOpen, onClose, consu
 
                 {/* Search */}
                 <div className="p-6 border-b border-white/[0.05] bg-white/[0.01]">
+                    <div className="flex items-center gap-2 mb-4">
+                        <input
+                            className="flex-1 bg-[#0d1526] border border-white/[0.08] rounded-2xl px-4 py-3 text-[13px] font-medium text-white placeholder:text-slate-600 outline-none focus:border-blue-500/40 transition-all shadow-inner"
+                            placeholder="Cadastrar novo consultor..."
+                            value={novoConsultorNome}
+                            onChange={e => setNovoConsultorNome(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleCreateConsultor(); }}
+                        />
+                        <button
+                            onClick={handleCreateConsultor}
+                            className="px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest"
+                        >
+                            Cadastrar
+                        </button>
+                    </div>
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                         <input

@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronUp, Check, Shield, MessageCircle, X, Send, AlertTriangle, Search, Filter } from 'lucide-react';
-import { Lead, STAGES, STAGE_SLAS } from '../../types';
-import { formatMoney, getSnippets, getWhatsAppLink, getDaysInStage, formatDate } from '../../utils/helpers';
+import { ChevronDown, ChevronUp, Check, MessageCircle, X, Send, AlertTriangle, Search, Filter, UserRound, MessageSquare } from 'lucide-react';
+import { Lead, Consultor, STAGES, STAGE_SLAS } from '../../types';
+import { getSnippets, getWhatsAppLink, getDaysInStage, formatDate, checkSLA, getClientWhatsAppMessage, getConsultantWhatsAppMessage } from '../../utils/helpers';
 import StatusBadge from '../ui/StatusBadge';
 
 interface FilterState {
     status: string[];
+    acao: string;
     nome: string;
     consultor: string;
     renda: string;
@@ -13,6 +14,7 @@ interface FilterState {
 
 interface LeadsTableProps {
     leads: Lead[];
+    consultores: Consultor[];
     isLoading?: boolean;
     globalSearch: string;
     setSelectedLead: (lead: Lead) => void;
@@ -62,9 +64,10 @@ const TableSkeleton = () => (
     </>
 );
 
-export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = false, globalSearch, setSelectedLead, updateLeadStatus }: LeadsTableProps) {
+export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, isLoading = false, globalSearch, setSelectedLead, updateLeadStatus }: LeadsTableProps) {
     const [filters, setFilters] = useState<FilterState>({
-        status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em Análise'],
+        status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em AnÃƒÂ¡lise'],
+        acao: '',
         nome: '',
         consultor: '',
         renda: ''
@@ -73,18 +76,21 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
     const [sortKey, setSortKey] = useState<string>('sla');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [showStatusFilter, setShowStatusFilter] = useState(false);
-    const [showNameFilter, setShowNameFilter] = useState(false);
-    const [showConsultorFilter, setShowConsultorFilter] = useState(false);
+    const [showAcaoFilter, setShowAcaoFilter] = useState(false);
     const [showRendaFilter, setShowRendaFilter] = useState(false);
     const [rendaOp, setRendaOp] = useState('>=');
     const [rendaVal, setRendaVal] = useState('');
     const [editingStatusLeadId, setEditingStatusLeadId] = useState<number | null>(null);
     const [waModalLead, setWaModalLead] = useState<Lead | null>(null);
     const [waMessage, setWaMessage] = useState('');
+    const [consultantModalLead, setConsultantModalLead] = useState<Lead | null>(null);
+    const [consultantMessage, setConsultantMessage] = useState('');
+    const [consultantChannel, setConsultantChannel] = useState<'whatsapp' | 'teams'>('whatsapp');
 
     const filteredLeads = useMemo(() => {
         let result = leads.filter(item => {
             if (filters.status.length > 0 && !filters.status.includes(item.status)) return false;
+            if (filters.acao && (item.acao || '') !== filters.acao) return false;
             if (filters.nome && !(item.nome || '').toLowerCase().includes(filters.nome.toLowerCase())) return false;
             if (filters.consultor && !(item.consultor || '').toLowerCase().includes(filters.consultor.toLowerCase())) return false;
             if (filters.renda) {
@@ -159,7 +165,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
 
     const handleOpenWA = (l: Lead) => {
         setWaModalLead(l);
-        setWaMessage(getSnippets(l).followUpConsultor || '');
+        setWaMessage(getClientWhatsAppMessage(l) || '');
     };
 
     const handleSendWA = () => {
@@ -168,11 +174,47 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
         setWaModalLead(null);
     };
 
+    const findConsultor = useCallback((lead: Lead) => {
+        const nome = (lead.consultor || '').trim();
+        if (!nome) return undefined;
+        return consultores.find(c => (c.nome || '').trim().toLowerCase() === nome.toLowerCase());
+    }, [consultores]);
+
+    const handleOpenConsultantModal = (l: Lead) => {
+        const consultor = findConsultor(l);
+        setConsultantModalLead(l);
+        setConsultantMessage(getConsultantWhatsAppMessage(l) || '');
+
+        if (consultor?.whatsapp) setConsultantChannel('whatsapp');
+        else if (consultor?.teams_link) setConsultantChannel('teams');
+        else setConsultantChannel('whatsapp');
+    };
+
+    const handleSendConsultantMessage = () => {
+        if (!consultantModalLead) return;
+        const consultor = findConsultor(consultantModalLead);
+        if (!consultor) return;
+
+        if (consultantChannel === 'whatsapp' && consultor.whatsapp) {
+            window.open(getWhatsAppLink(consultor.whatsapp, consultantMessage), '_blank');
+            setConsultantModalLead(null);
+            return;
+        }
+
+        if (consultantChannel === 'teams' && consultor.teams_link) {
+            navigator.clipboard?.writeText(consultantMessage).catch(() => undefined);
+            window.open(consultor.teams_link, '_blank');
+            setConsultantModalLead(null);
+        }
+    };
+
     // Sub-componente de Card para Mobile
     const LeadCard = ({ lead }: { lead: Lead }) => {
         const days = getDaysInStage(lead);
         const slaMax = STAGE_SLAS[lead.status] || 1;
         const isBreached = days > slaMax;
+        const consultor = findConsultor(lead);
+        const canContactConsultant = !!(consultor?.whatsapp || consultor?.teams_link);
         
         return (
             <div 
@@ -186,7 +228,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                         </div>
                         <div>
                             <h3 className="text-[13px] font-bold text-slate-100">{lead.nome || 'Sem Nome'}</h3>
-                            <p className="text-[10px] text-slate-500">{lead.profissao || 'Sem profissão'}</p>
+                            <p className="text-[10px] text-slate-500">{lead.profissao || 'Sem profissÃƒÂ£o'}</p>
                         </div>
                     </div>
                     <StatusBadge status={lead.status || 'Lead'} />
@@ -218,6 +260,14 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                         <MessageCircle size={14} />
                         WhatsApp
                     </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenConsultantModal(lead); }}
+                        disabled={!canContactConsultant}
+                        className={`w-10 h-10 rounded-xl border inline-flex items-center justify-center transition-colors ${canContactConsultant ? 'bg-blue-500/10 border-blue-500/20 text-blue-300 hover:bg-blue-500/20' : 'bg-white/5 border-white/10 text-slate-600 cursor-not-allowed'}`}
+                        title={canContactConsultant ? 'Contato do consultor' : 'Consultor sem WhatsApp/Teams'}
+                    >
+                        <UserRound size={14} />
+                    </button>
                     {lead.salesforceUrl && (
                         <a 
                             href={lead.salesforceUrl} 
@@ -238,8 +288,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
         const handleBodyClick = (e: MouseEvent) => {
             if (!(e.target as Element).closest('.filter-container')) {
                 setShowStatusFilter(false);
-                setShowNameFilter(false);
-                setShowConsultorFilter(false);
+                setShowAcaoFilter(false);
                 setShowRendaFilter(false);
             }
         };
@@ -255,6 +304,16 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
     const thCls = "px-5 py-4 border-b text-left" as const;
     const thStyle = { borderColor: 'rgba(255,255,255,0.05)' };
     const thLbl = { fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' as const, letterSpacing: '0.15em', color: '#cbd5e1', cursor: 'pointer' };
+    const uniqueAcoes = useMemo(
+        () => Array.from(new Set(leads.map(l => (l.acao || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        [leads]
+    );
+    const formatMoneyNoCurrency = (v: number | string | null | undefined) => {
+        if (v === null || v === undefined || v === '') return '--';
+        const value = typeof v === 'string' ? Number(v.replace(/\D/g, '')) : Number(v);
+        if (Number.isNaN(value)) return '--';
+        return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(value);
+    };
 
     return (
         <main className="p-2 lg:p-6 max-w-[1600px] mx-auto min-h-screen">
@@ -264,7 +323,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                         <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', boxShadow: '0 0 16px rgba(16,185,129,0.20)' }}><MessageCircle size={18} style={{ color: '#6ee7b7' }} /></div>
-                                <h3 className="font-black text-white uppercase tracking-widest text-[12px]">WhatsApp Dinâmico</h3>
+                                <h3 className="font-black text-white uppercase tracking-widest text-[12px]">WhatsApp DinÃƒÂ¢mico</h3>
                             </div>
                             <button onClick={() => setWaModalLead(null)} className="w-8 h-8 rounded-xl flex items-center justify-center transition-all" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#94a3b8' }}><X size={16} /></button>
                         </div>
@@ -273,12 +332,84 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                 <button key={idx} onClick={() => setWaMessage(tmpl)} className="text-[9px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-all" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1' }}
                                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.12)'; (e.currentTarget as HTMLButtonElement).style.color = '#6ee7b7'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(16,185,129,0.25)'; }}
                                     onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#cbd5e1'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}>
-                                    Opção {idx + 1}
+                                    OpÃƒÂ§ÃƒÂ£o {idx + 1}
                                 </button>
                             ))}
                         </div>
                         <textarea className="w-full text-[13px] min-h-[140px] rounded-2xl resize-none outline-none p-5 leading-relaxed" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontFamily: 'inherit' }} value={waMessage} onChange={e => setWaMessage(e.target.value)} />
                         <button onClick={handleSendWA} className="mt-5 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.75), rgba(5,150,105,0.80))', color: 'white', boxShadow: '0 0 24px rgba(16,185,129,0.30)', border: '1px solid rgba(16,185,129,0.30)' }}><Send size={15} /> Disparar Mensagem</button>
+                    </div>
+                </div>
+            )}
+
+            {consultantModalLead && (
+                <div className="fixed inset-0 z-[210] flex items-center justify-center" style={{ background: 'rgba(2,6,15,0.88)', backdropFilter: 'blur(16px)' }} onClick={() => setConsultantModalLead(null)}>
+                    <div className="w-full max-w-lg p-8 rounded-3xl animate-in" style={{ background: 'rgba(8,15,30,0.95)', border: '1px solid rgba(59,130,246,0.25)', boxShadow: '0 0 60px rgba(59,130,246,0.15)', backdropFilter: 'blur(30px)' }} onClick={e => e.stopPropagation()}>
+                        {(() => {
+                            const consultor = findConsultor(consultantModalLead);
+                            const snippets = getSnippets(consultantModalLead);
+                            const templates = [
+                                { label: 'Contexto Atual', text: getConsultantWhatsAppMessage(consultantModalLead) },
+                                { label: 'Follow-up', text: snippets.followUpConsultor },
+                                { label: 'Planejamento', text: snippets.cobrarPlanejamento },
+                                { label: 'Fechamento', text: snippets.cobrarFechamento },
+                                { label: 'Criar Lead', text: snippets.criarLeadConsultor },
+                            ].filter(t => !!t.text);
+
+                            const hasWhatsapp = !!consultor?.whatsapp;
+                            const hasTeams = !!consultor?.teams_link;
+                            const channelDisabled = (consultantChannel === 'whatsapp' && !hasWhatsapp) || (consultantChannel === 'teams' && !hasTeams);
+
+                            return (
+                                <>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', boxShadow: '0 0 16px rgba(59,130,246,0.20)' }}><UserRound size={18} style={{ color: '#93c5fd' }} /></div>
+                                            <h3 className="font-black text-white uppercase tracking-widest text-[12px]">Contato Consultor</h3>
+                                        </div>
+                                        <button onClick={() => setConsultantModalLead(null)} className="w-8 h-8 rounded-xl flex items-center justify-center transition-all" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#94a3b8' }}><X size={16} /></button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <button
+                                            onClick={() => setConsultantChannel('whatsapp')}
+                                            disabled={!hasWhatsapp}
+                                            className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${consultantChannel === 'whatsapp' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-white/5 text-slate-400 border-white/10'} ${!hasWhatsapp ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        >
+                                            WhatsApp
+                                        </button>
+                                        <button
+                                            onClick={() => setConsultantChannel('teams')}
+                                            disabled={!hasTeams}
+                                            className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${consultantChannel === 'teams' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-white/5 text-slate-400 border-white/10'} ${!hasTeams ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        >
+                                            Teams
+                                        </button>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2 mb-5">
+                                        {templates.map((tmpl, idx) => (
+                                            <button key={`${tmpl.label}-${idx}`} onClick={() => setConsultantMessage(tmpl.text)} className="text-[9px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-all" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#cbd5e1' }}
+                                                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.12)'; (e.currentTarget as HTMLButtonElement).style.color = '#93c5fd'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.25)'; }}
+                                                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#cbd5e1'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}>
+                                                {tmpl.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <textarea className="w-full text-[13px] min-h-[140px] rounded-2xl resize-none outline-none p-5 leading-relaxed" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#f8fafc', fontFamily: 'inherit' }} value={consultantMessage} onChange={e => setConsultantMessage(e.target.value)} />
+                                    <button
+                                        onClick={handleSendConsultantMessage}
+                                        disabled={channelDisabled}
+                                        className={`mt-5 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 ${channelDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        style={{ background: consultantChannel === 'teams' ? 'linear-gradient(135deg, rgba(99,102,241,0.75), rgba(67,56,202,0.80))' : 'linear-gradient(135deg, rgba(16,185,129,0.75), rgba(5,150,105,0.80))', color: 'white', boxShadow: consultantChannel === 'teams' ? '0 0 24px rgba(99,102,241,0.30)' : '0 0 24px rgba(16,185,129,0.30)', border: consultantChannel === 'teams' ? '1px solid rgba(99,102,241,0.30)' : '1px solid rgba(16,185,129,0.30)' }}
+                                    >
+                                        {consultantChannel === 'teams' ? <MessageSquare size={15} /> : <Send size={15} />}
+                                        {consultantChannel === 'teams' ? 'Abrir Teams (copiar msg)' : 'Disparar WhatsApp'}
+                                    </button>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
@@ -319,7 +450,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                     <table className="w-full text-left border-collapse" style={{ minWidth: '600px' }}>
                         <thead className="sticky top-0 z-40 bg-[#040810]/92 backdrop-blur-xl">
                             <tr>
-                                <th className={thCls} style={{ ...thStyle, width: 220 }}>
+                                <th className={thCls} style={{ ...thStyle, width: 170 }}>
                                     <div className="flex items-center justify-between">
                                         <button onClick={() => handleSort('status')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Status <SortIcon col="status" /></button>
                                         <div className="relative filter-container">
@@ -334,7 +465,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                                     ))}
                                                     {filters.status.length > 0 && (
                                                         <div className="flex gap-1.5 mt-1.5">
-                                                            <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em Análise'] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(37,99,235,0.08)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.15)' }}>Só Ativos</button>
+                                                            <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em AnÃƒÂ¡lise'] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(37,99,235,0.08)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.15)' }}>SÃƒÂ³ Ativos</button>
                                                             <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: [] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(100,116,139,0.08)', color: '#94a3b8', border: '1px solid rgba(100,116,139,0.15)' }}>Ver Todos</button>
                                                         </div>
                                                     )}
@@ -343,26 +474,30 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                         </div>
                                     </div>
                                 </th>
+                                <th className={`${thCls} hidden xl:table-cell`} style={{ ...thStyle, width: 190 }}>
+                                    <div className="flex items-center justify-between">
+                                        <button onClick={() => handleSort('acao')} className="flex items-center hover:text-white transition-colors" style={thLbl}>AÇÃO <SortIcon col="acao" /></button>
+                                        <div className="relative filter-container">
+                                            <button onClick={() => setShowAcaoFilter(!showAcaoFilter)} className="p-1.5 rounded-lg transition-all" style={{ color: filters.acao ? '#60a5fa' : '#94a3b8', background: filters.acao ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Filter size={13} /></button>
+                                            {showAcaoFilter && (
+                                                <div className="absolute top-full right-0 mt-2 w-56 z-[60] p-3" style={glassDropdown}>
+                                                    <select autoFocus style={glassInput} value={filters.acao} onChange={e => setFilters({ ...filters, acao: e.target.value })}>
+                                                        <option value="">Todas as ações</option>
+                                                        {uniqueAcoes.map(a => <option key={a} value={a}>{a}</option>)}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </th>
                                 <th className={thCls} style={{ ...thStyle, width: 280 }}>
-                                    <div className="flex items-center justify-between">
-                                        <button onClick={() => handleSort('nome')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Cliente <SortIcon col="nome" /></button>
-                                        <div className="relative filter-container">
-                                            <button onClick={() => setShowNameFilter(!showNameFilter)} className="p-1.5 rounded-lg transition-all" style={{ color: filters.nome ? '#60a5fa' : '#94a3b8', background: filters.nome ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Search size={13} /></button>
-                                            {showNameFilter && <div className="absolute top-full left-0 mt-2 w-52 z-[60] p-3" style={glassDropdown}><input autoFocus style={glassInput} placeholder="Buscar cliente..." value={filters.nome} onChange={e => setFilters({ ...filters, nome: e.target.value })} /></div>}
-                                        </div>
-                                    </div>
+                                    <button onClick={() => handleSort('nome')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Cliente <SortIcon col="nome" /></button>
                                 </th>
-                                <th className={`${thCls} table-cell`} style={{ ...thStyle, width: 140 }}>
-                                    <div className="flex items-center justify-between">
-                                        <button onClick={() => handleSort('consultor')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Consultor <SortIcon col="consultor" /></button>
-                                        <div className="relative filter-container">
-                                            <button onClick={() => setShowConsultorFilter(!showConsultorFilter)} className="p-1.5 rounded-lg" style={{ color: filters.consultor ? '#60a5fa' : '#94a3b8', background: filters.consultor ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Search size={13} /></button>
-                                            {showConsultorFilter && <div className="absolute top-full left-0 mt-2 w-52 z-[60] p-3" style={glassDropdown}><input autoFocus style={glassInput} placeholder="Filtrar consultor..." value={filters.consultor} onChange={e => setFilters({ ...filters, consultor: e.target.value })} /></div>}
-                                        </div>
-                                    </div>
+                                <th className={`${thCls} table-cell`} style={{ ...thStyle, width: 220 }}>
+                                    <button onClick={() => handleSort('consultor')} className="flex items-center hover:text-white transition-colors" style={thLbl}>Consultor <SortIcon col="consultor" /></button>
                                 </th>
-                                <th className={`${thCls} hidden sm:table-cell text-right`} style={{ ...thStyle, width: 120 }}>
-                                    <div className="flex items-center justify-end gap-2">
+                                <th className={`${thCls} hidden sm:table-cell`} style={{ ...thStyle, width: 130 }}>
+                                    <div className="flex items-center justify-start gap-2">
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowRendaFilter(!showRendaFilter)} className="p-1.5 rounded-lg mr-1" style={{ color: filters.renda ? '#60a5fa' : '#94a3b8', background: filters.renda ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Filter size={13} /></button>
                                             {showRendaFilter && (
@@ -378,16 +513,18 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
                                     </div>
                                 </th>
                                 <th className={`${thCls} hidden lg:table-cell`} style={{ ...thStyle, width: 100 }}><button onClick={() => handleSort('sla')} className="flex items-center justify-center w-full hover:text-white transition-colors" style={thLbl}>SLA <SortIcon col="sla" /></button></th>
-                                <th className={`${thCls} hidden xl:table-cell text-center`} style={{ ...thStyle, width: 180 }}><button onClick={() => handleSort('acao')} className="flex items-center justify-center w-full hover:text-white transition-colors" style={thLbl}>Ação Operacional <SortIcon col="acao" /></button></th>
+                                <th className={`${thCls} hidden lg:table-cell text-center`} style={{ ...thStyle, width: 120 }}>
+                                    <span style={thLbl}>Contato</span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? <TableSkeleton /> : filteredLeads.map(lead => (
-                                <LeadRow key={lead.id} lead={lead} setSelectedLead={setSelectedLead} updateLeadStatus={updateLeadStatus} editingStatusLeadId={editingStatusLeadId} setEditingStatusLeadId={setEditingStatusLeadId} handleOpenWA={handleOpenWA} setFilters={setFilters} />
+                                <LeadRow key={lead.id} lead={lead} consultores={consultores} setSelectedLead={setSelectedLead} updateLeadStatus={updateLeadStatus} editingStatusLeadId={editingStatusLeadId} setEditingStatusLeadId={setEditingStatusLeadId} handleOpenWA={handleOpenWA} handleOpenConsultantModal={handleOpenConsultantModal} setFilters={setFilters} formatMoneyNoCurrency={formatMoneyNoCurrency} />
                             ))}
                             {!isLoading && filteredLeads.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="p-20 text-center">
+                                    <td colSpan={7} className="p-20 text-center">
                                         <div className="flex flex-col items-center justify-center gap-4">
                                             <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}><Search className="w-5 h-5" style={{ color: '#475569' }} /></div>
                                             <span className="text-[12px] font-medium" style={{ color: '#cbd5e1' }}>Nenhum cliente encontrado.</span>
@@ -403,16 +540,17 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, isLoading = fa
     );
 });
 
-const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingStatusLeadId, setEditingStatusLeadId, handleOpenWA, setFilters }: any) => {
+const LeadRow = React.memo(({ lead, consultores, setSelectedLead, updateLeadStatus, editingStatusLeadId, setEditingStatusLeadId, handleOpenWA, handleOpenConsultantModal, setFilters, formatMoneyNoCurrency }: any) => {
     const rawDays = getDaysInStage(lead);
     const days = (isNaN(Number(rawDays)) || rawDays === null) ? 0 : Number(rawDays);
     const limit = STAGE_SLAS[lead.status] || 0;
-    const isProtected = !!(lead.dataAcao && lead.dataAcao.trim());
-    const isBreached = limit > 0 && days > limit && !isProtected && !['Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
+    const isBreached = checkSLA(lead).isBreached && !['Ganho', 'Perdido', 'Cancelou'].includes(lead.status);
+    const consultor = (consultores || []).find((c: Consultor) => (c.nome || '').trim().toLowerCase() === (lead.consultor || '').trim().toLowerCase());
+    const canContactConsultant = !!(consultor?.whatsapp || consultor?.teams_link);
 
     return (
         <tr onClick={() => setSelectedLead(lead)} className="cursor-pointer transition-colors duration-100 group border-b border-white/5 hover:bg-blue-500/5">
-            <td className="px-5 py-4">
+            <td className="px-5 py-4 text-center">
                 <div onClick={e => { e.stopPropagation(); setEditingStatusLeadId(editingStatusLeadId === lead.id ? null : lead.id); }} className="relative cursor-pointer inline-block">
                     <StatusBadge status={lead.status || 'Lead'} />
                     {editingStatusLeadId === lead.id && (
@@ -430,14 +568,19 @@ const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingSt
                     )}
                 </div>
             </td>
+            <td className="px-5 py-4 hidden xl:table-cell text-center">
+                {lead.acao ? (
+                    <div className="flex flex-col items-center gap-1"><button onClick={e => { e.stopPropagation(); setSelectedLead(lead); }} className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-200">{lead.acao}</button>{lead.dataAcao && <span className="text-[9px] font-black font-mono text-slate-100">{formatDate(lead.dataAcao)}</span>}</div>
+                ) : <span className="text-[11px] font-mono text-slate-600">--</span>}
+            </td>
             <td className="px-5 py-4">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-[11px] font-black text-slate-300">{(lead.nome || 'CL').split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase()}</div>
-                    <div className="flex flex-col max-w-[200px]"><span className="text-[12px] font-bold text-slate-100 truncate">{lead.nome || 'Sem Nome'}</span><span className="text-[10px] truncate mt-0.5 text-slate-400">{lead.profissao || 'Sem profissão'}</span></div>
+                    <div className="flex flex-col max-w-[200px]"><span className="text-[12px] font-bold text-slate-100 truncate">{lead.nome || 'Sem Nome'}</span><span className="text-[10px] truncate mt-0.5 text-slate-400">{lead.profissao || 'Sem profissÃƒÂ£o'}</span></div>
                 </div>
             </td>
             <td className="px-5 py-4 table-cell"><span onClick={(e) => { e.stopPropagation(); setFilters((p: any) => ({ ...p, consultor: lead.consultor || '' })); }} className="text-[12px] font-medium text-slate-400 group-hover:text-cyan-300 transition-colors hover:underline decoration-cyan-500/30 underline-offset-4 cursor-pointer">{lead.consultor || '--'}</span></td>
-            <td className="px-5 py-4 text-right hidden sm:table-cell font-mono text-[13px] text-slate-400">{formatMoney(lead.renda)}</td>
+            <td className="px-5 py-4 hidden sm:table-cell text-center font-mono text-[13px] text-slate-400">{formatMoneyNoCurrency(lead.renda)}</td>
             <td className="px-5 py-4 hidden lg:table-cell">
                 <div className="flex flex-col items-center justify-center text-center">
                     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${isBreached ? 'bg-rose-500/10 border-rose-500/20 shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/10'}`}>
@@ -447,11 +590,27 @@ const LeadRow = React.memo(({ lead, setSelectedLead, updateLeadStatus, editingSt
                     <span className="text-[8px] uppercase tracking-widest mt-1 text-slate-500">Limite: {limit || 'N/A'}{limit > 0 ? 'd' : ''}</span>
                 </div>
             </td>
-            <td className="px-5 py-4 hidden xl:table-cell text-center">
-                {lead.acao ? (
-                    <div className="flex flex-col items-center gap-1"><button onClick={e => { e.stopPropagation(); setSelectedLead(lead); }} className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-200">{lead.acao}</button>{lead.dataAcao && <span className="text-[9px] font-black font-mono text-slate-100">{formatDate(lead.dataAcao)}</span>}</div>
-                ) : <span className="text-[11px] font-mono text-slate-600">--</span>}
+            <td className="px-5 py-4 hidden lg:table-cell text-center">
+                <div className="flex items-center justify-center gap-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenWA(lead); }}
+                        className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 inline-flex items-center justify-center hover:bg-emerald-500/20 transition-colors"
+                        title="Contato com cliente (WhatsApp)"
+                    >
+                        <MessageCircle size={14} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenConsultantModal(lead); }}
+                        disabled={!canContactConsultant}
+                        className={`w-9 h-9 rounded-xl border inline-flex items-center justify-center transition-colors ${canContactConsultant ? 'bg-blue-500/10 border-blue-500/20 text-blue-300 hover:bg-blue-500/20' : 'bg-white/5 border-white/10 text-slate-600 cursor-not-allowed'}`}
+                        title={canContactConsultant ? 'Contato com consultor' : 'Consultor sem WhatsApp/Teams'}
+                    >
+                        <UserRound size={14} />
+                    </button>
+                </div>
             </td>
         </tr>
     );
 });
+
+

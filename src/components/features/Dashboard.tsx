@@ -3,10 +3,10 @@ import {
     Users, CalendarX, TrendingDown, Trophy, ArrowRight,
     Activity, Filter, Target, Check, AlertTriangle,
     Loader2, ExternalLink, ChevronDown, PlayCircle,
-    MessageCircle, Clock, BarChart2, CheckCircle2, Timer, ShieldCheck, DollarSign
+    MessageCircle, Clock, BarChart2, CheckCircle2, Timer, ShieldCheck
 } from 'lucide-react';
 import { Lead } from '../../types';
-import { checkSLA, getCadenceFlow, getDaysInStage, formatDate, formatMoney, getConsultantWhatsAppMessage, getWhatsAppLink } from '../../utils/helpers';
+import { checkSLA, getCadenceFlow, getDaysInStage, formatDate, getConsultantWhatsAppMessage, getWhatsAppLink, parseLocalDate } from '../../utils/helpers';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
 
 // ─── Configuração do funil ──────────────────────────────────────────────────
@@ -24,7 +24,6 @@ type QuickActionType = 'contactado' | 'agendar' | 'adiar' | 'alinhado';
 interface DashboardProps {
     leads: Lead[];
     consultores: any[]; 
-    policies: any[];
     openLead: (l: Lead) => void;
     onQuickAction: (lead: Lead, action: QuickActionType) => Promise<void>;
 }
@@ -90,7 +89,10 @@ const LeadTaskRow: React.FC<LeadTaskRowProps> = ({
                         )}
                         {/* Tarefa interna: data do follow-up agendado */}
                         {lead.status === 'Follow-up' && lead.dataAcao && (() => {
-                            const isOverdue = new Date(lead.dataAcao) < new Date(new Date().toDateString());
+                            const scheduledDate = parseLocalDate(lead.dataAcao);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const isOverdue = scheduledDate ? scheduledDate < today : false;
                             return (
                                 <span
                                     className="text-[8px] font-black font-mono px-1.5 py-0.5 rounded-md"
@@ -266,7 +268,7 @@ const EmptyState = ({ label }: { label: string }) => (
 );
 
 // ─── Dashboard principal ─────────────────────────────────────────────────────
-export const Dashboard = React.memo(function Dashboard({ leads, consultores, policies, openLead, onQuickAction }: DashboardProps) {
+export const Dashboard = React.memo(function Dashboard({ leads, consultores, openLead, onQuickAction }: DashboardProps) {
     const [expandedId, setExpandedId]             = useState<number | null>(null);
     const [expandedConsultor, setExpandedConsultor] = useState<string | null>(null);
     const [processingId, setProcessingId]         = useState<number | null>(null);
@@ -301,19 +303,8 @@ export const Dashboard = React.memo(function Dashboard({ leads, consultores, pol
         });
     }, [leads]);
 
-    const totalActivePremium = useMemo(() => {
-        return (policies || [])
-            .filter(p => p.status === 'Ativa')
-            .reduce((acc, p) => acc + (p.valorPremio || 0), 0);
-    }, [policies]);
-
-    const activePoliciesCount = useMemo(() => {
-        return (policies || []).filter(p => p.status === 'Ativa').length;
-    }, [policies]);
-
     const kpis = [
         { label: 'Leads Ativos', value: stats.leadsAtivos, sub: `de ${stats.leadsTotal} totais`, icon: Users, color: '#93c5fd', glow: 'rgba(37,99,235,0.25)', accent: 'rgba(37,99,235,0.12)', border: 'rgba(37,99,235,0.20)' },
-        { label: 'Prêmio Mensal', value: formatMoney(totalActivePremium), sub: `${activePoliciesCount} apólices ativas`, icon: DollarSign, color: '#6ee7b7', glow: 'rgba(16,185,129,0.25)', accent: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.20)' },
         { label: 'Taxa de No-Show', value: `${stats.noShowRate}%`, sub: 'Reuniões perdidas', icon: CalendarX, color: '#fca5a5', glow: 'rgba(244,63,94,0.25)', accent: 'rgba(244,63,94,0.10)', border: 'rgba(244,63,94,0.20)' },
         { label: 'Win Rate', value: `${stats.winRate}%`, icon: Trophy, color: '#6ee7b7', glow: 'rgba(16,185,129,0.25)', accent: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.20)' },
     ];

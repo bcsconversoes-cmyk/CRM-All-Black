@@ -1,63 +1,28 @@
 import { supabase } from '../utils/supabase';
 import { Lead, Consultor } from '../types';
+import { mapLeadFromDb, mapLeadToDb } from './leadMapper';
 
-
-export const getLeads = async () => {
+export const getLeads = async (): Promise<Lead[]> => {
     const { data, error } = await supabase.from('leads').select('*').order('id', { ascending: false });
     if (error) throw error;
-    return data;
+    return (data || []).map(mapLeadFromDb);
 };
 
 export const updateLeadStatus = async (id: number, status: string, historico: string[], dataUltimoStatus?: string) => {
-    const payload: any = { status, historico, acao: '', data_acao: '' };
-    if (dataUltimoStatus) payload.data_ultimo_status = dataUltimoStatus;
+    const payload: any = { status, historico, acao: '', dataAcao: '', data_acao: '' };
     const { error } = await supabase.from('leads').update(payload).eq('id', id);
     if (error) throw error;
 };
 
 export const createLead = async (payload: Partial<Lead>) => {
-    const dbPayload: any = { ...payload };
-    delete dbPayload.id;
-    delete dbPayload.rowIndex;
-    delete dbPayload.dataUltimoStatus; // não existe como coluna no banco
-
-    if (dbPayload.nome !== undefined) {
-        dbPayload.nomecliente = dbPayload.nome;
-        delete dbPayload.nome;
-    }
-
-    if (dbPayload.dataAcao !== undefined) {
-        dbPayload.data_acao = dbPayload.dataAcao;
-        delete dbPayload.dataAcao;
-    }
-
+    const dbPayload = mapLeadToDb(payload);
     const { data, error } = await supabase.from('leads').insert([dbPayload]).select().single();
     if (error) throw error;
-    return data;
+    return mapLeadFromDb(data);
 };
 
 export const updateLead = async (id: number, payload: Partial<Lead>) => {
-    const dbPayload: any = { ...payload };
-    delete dbPayload.id;
-    delete dbPayload.rowIndex;
-    delete dbPayload.dataUltimoStatus; // não existe como coluna no banco
-
-    if (dbPayload.nome !== undefined) {
-        dbPayload.nomecliente = dbPayload.nome;
-        delete dbPayload.nome;
-    }
-
-    // Mapeamento para as novas colunas no Supabase
-    if (dbPayload.dataAcao !== undefined) {
-        dbPayload.data_acao = dbPayload.dataAcao;
-        delete dbPayload.dataAcao;
-    }
-
-    if (dbPayload.dataUltimoStatus !== undefined) {
-        dbPayload.data_ultimo_status = dbPayload.dataUltimoStatus;
-        delete dbPayload.dataUltimoStatus;
-    }
-
+    const dbPayload = mapLeadToDb(payload);
     const { error } = await supabase.from('leads').update(dbPayload).eq('id', id);
     if (error) throw error;
 };

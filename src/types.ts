@@ -26,7 +26,6 @@ export interface Lead {
     consultor?: string;
     salesforceUrl?: string;
     celular?: string;
-    cpf?: string;
     email?: string;
     nome?: string;
     profissao?: string;
@@ -81,23 +80,3 @@ export const STAGE_SLAS: Record<string, number> = {
     'Cancelou': 0
 };
 
-// ─── Módulo de Apólices ────────────────────────────────────────────────────────
-
-export type PolicyStatus = 'Ativa' | 'Pendente' | 'Cancelada';
-export type Seguradora = 'Azos' | 'MAG' | 'Icatu' | 'Omint';
-
-export const SEGURADORAS: Seguradora[] = ['Azos', 'MAG', 'Icatu', 'Omint'];
-export const POLICY_STATUSES: PolicyStatus[] = ['Ativa', 'Pendente', 'Cancelada'];
-
-export interface Policy {
-    id: number;
-    numero: string;
-    seguradora: Seguradora;
-    nomeCliente: string;
-    leadId?: number | null;       // FK opcional — preparada para relação futura
-    dataEmissao: string;          // ISO date string (YYYY-MM-DD)
-    valorPremio: number;          // valor mensal em R$
-    status: PolicyStatus;
-    linkDrive?: string;
-    criadoEm?: string;
-};

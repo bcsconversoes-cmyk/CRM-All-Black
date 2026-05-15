@@ -42,16 +42,40 @@ export const parseDateInput = (v: string) => {
 
 export const formatDate = (date?: string | null) => {
   if (!date) return '--/--/----';
-  if (date.includes('-')) {
-    const [y, m, d] = date.split('-');
-    if (y.length === 4) return `${d}/${m}/${y}`;
+  const raw = String(date).trim().split('T')[0].split(' ')[0];
+
+  if (raw.includes('-')) {
+    const [y, m, d] = raw.split('-');
+    if (y?.length === 4 && m && d) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
   }
-  return date;
+
+  if (raw.includes('/')) {
+    const [a, b, y] = raw.split('/');
+    if (a && b && y?.length === 4) {
+      const first = Number(a);
+      const second = Number(b);
+      if (first > 12) return `${a.padStart(2, '0')}/${b.padStart(2, '0')}/${y}`;
+      if (second > 12) return `${b.padStart(2, '0')}/${a.padStart(2, '0')}/${y}`;
+      return `${a.padStart(2, '0')}/${b.padStart(2, '0')}/${y}`;
+    }
+  }
+
+  return raw;
+};
+
+export const parseLocalDate = (date?: string | null) => {
+  if (!date) return null;
+  const formatted = formatDate(date);
+  const [d, m, y] = formatted.split('/').map(Number);
+  if (!d || !m || !y) return null;
+  const parsed = new Date(y, m - 1, d);
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
 };
 
 export const calcAge = (dateStr: string) => {
   if (!dateStr || String(dateStr).length < 10) return 0;
-  const [d, m, y] = dateStr.split('/').map(Number);
+  const [d, m, y] = formatDate(dateStr).split('/').map(Number);
   const birth = new Date(y, m - 1, d);
   const now = new Date();
   let age = now.getFullYear() - birth.getFullYear();
@@ -213,11 +237,11 @@ export const getClientWhatsAppMessage = (lead: Lead) => {
 
   // ── GANHO ─────────────────────────────────────────────────────────────────
   if (lead.status === 'Ganho') {
-    if (lead.acao === 'Enviar Apólice') {
-      return `${lead_nome}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`;
+    if (lead.acao === 'Enviar Documentos') {
+      return `${lead_nome}, tudo bem?\n\nA documentação final do seu planejamento foi concluída. Estou enviando o material por aqui para facilitar, mas também fico à disposição para revisar qualquer ponto e acompanhar futuras atualizações da sua proteção financeira.\n\nAgradeço pela confiança e desejo muito sucesso!`;
     }
     if (lead.acao === 'Criar Lead') return snippets.boasVindas;
-    return snippets.apoliceCliente;
+    return snippets.documentosCliente;
   }
 
   // ── Fallback genérico ──────────────────────────────────────────────────────
@@ -289,13 +313,13 @@ export const getConsultantWhatsAppMessage = (lead: Lead) => {
   // ── GANHO ─────────────────────────────────────────────────────────────────
   if (lead.status === 'Ganho') {
     if (lead.acao === 'Criar Lead') {
-      return `${consultor_nome}, a apólice do lead ${lead_nome} foi emitida. Consegue criar o lead no Salesforce e colocar na descrição que é para me enviar?`;
+      return `${consultor_nome}, o lead ${lead_nome} foi concluído. Consegue criar o registro no Salesforce e colocar na descrição que é para me enviar?`;
     }
     if (lead.acao === 'Concluído') {
-      return `${consultor_nome}, tudo bem? Passando para te atualizar sobre o lead ${lead_nome}:\n\n✅ Apólices emitidas e enviadas ao cliente;\n✅ Contratos ativados no Salesforce;\n✅ Apólices anexadas aos contratos.\n\nBora pra cima! 🚀`;
+      return `${consultor_nome}, tudo bem? Passando para te atualizar sobre o lead ${lead_nome}:\n\n✅ Documentos finais enviados ao cliente;\n✅ Registro atualizado no Salesforce;\n✅ Processo comercial concluído.\n\nBora pra cima!`;
     }
-    if (lead.acao === 'Enviar Apólice') return snippets.apoliceConsultor;
-    return snippets.apoliceConsultor;
+    if (lead.acao === 'Enviar Documentos') return snippets.documentosConsultor;
+    return snippets.documentosConsultor;
   }
 
   // ── Fallback genérico ──────────────────────────────────────────────────────
@@ -319,10 +343,10 @@ export const getSnippets = (lead: Lead) => {
     cobrarPlanejamento: `Fala, ${consultor}! O estudo do ${cliente} já tá no gatilho aqui comigo. Já conseguiu alinhar com ele a data para a nossa call de apresentação?`,
     cobrarFechamento:   `${consultor}, o planejamento do ${cliente} ficou excelente! Quando conseguimos apresentar pra ele? Precisamos sanar as dúvidas finais e já partir para a formalização da proposta.`,
     followUpConsultor:  `${consultor}, passando pra fazer um follow-up sobre o ${cliente}. Como estamos de próximos passos? Ele retornou?`,
-    pendenciaDocs:      `Olá ${cliente}, tudo bem? A seguradora solicitou um pequeno complemento na documentação para a emissão da sua apólice. Pode me enviar [DOCUMENTO_AQUI] quando tiver um tempinho?`,
+    pendenciaDocs:      `Olá ${cliente}, tudo bem? A seguradora solicitou um pequeno complemento na documentação para seguir com a análise. Pode me enviar [DOCUMENTO_AQUI] quando tiver um tempinho?`,
     confirmacaoReuniao: `Olá ${cliente}, tudo bem? Passando só pra confirmar nossa reunião. Recomendo que separe uns 45 minutinhos num ambiente tranquilo para passarmos pelos cenários. Até lá!`,
     noShowRemarcacao:   `Olá ${cliente}, tudo bem? Tentei te ligar para nossa call mas acho que rolou algum imprevisto. Como as condições que eu estruturei têm um prazo, qual o melhor horário pra gente reagendar?`,
-    ganho: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
+    ganho: `${cliente}, tudo bem?\n\nA documentação final do seu planejamento foi concluída. Estou enviando o material por aqui para facilitar, mas também fico à disposição para revisar qualquer ponto e acompanhar futuras atualizações da sua proteção financeira.\n\nAgradeço pela confiança e desejo muito sucesso!`,
 
     // ── Mensagens ao CLIENTE com títulos claros ──────────────────────────────
     /** MSG 01 — Apresentação */
@@ -343,11 +367,11 @@ export const getSnippets = (lead: Lead) => {
     /** MSG 06 — Encerrar Contato */
     msg05: `${cliente}, tudo certo? Imagino que você esteja focado em outras prioridades no momento.\n\nComo não tive nenhum retorno até aqui, devo entender o silêncio como um "não é minha prioridade por enquanto" e considerar nosso papo encerrado? Se for o caso, sem problemas. Eu tiro o seu nome aqui da minha lista de acompanhamento.\n\nSe for só correria, me chama aqui...`,
 
-    /** MSG — Apólice Emitida (para o CLIENTE) */
-    apoliceCliente: `${cliente}, tudo bem?\n\nSua apólice de seguro foi emitida com sucesso! Estou enviando o PDF aqui para facilitar, mas você também deve tê-la recebido por e-mail. Ressalto que estou à disposição para quaisquer dúvidas que possam surgir e quero que realmente conte comigo para o que precisar, incluindo o acompanhamento a cada 12-24 meses. Afinal, temos que garantir que suas coberturas permaneçam alinhadas às suas necessidades.\n\nAgradeço pela confiança e desejo muito sucesso!`,
+    /** MSG — Documentos finais (para o CLIENTE) */
+    documentosCliente: `${cliente}, tudo bem?\n\nA documentação final do seu planejamento foi concluída. Estou enviando o material por aqui para facilitar, mas também fico à disposição para revisar qualquer ponto e acompanhar futuras atualizações da sua proteção financeira.\n\nAgradeço pela confiança e desejo muito sucesso!`,
 
-    /** MSG — Apólice Emitida (para o CONSULTOR) */
-    apoliceConsultor: `${consultor}, tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Apólices emitidas e enviadas ao cliente;\n✅ Contratos ativados no Salesforce;\n✅ Apólices anexadas aos contratos.\n\nBora pra cima! 🚀`,
+    /** MSG — Documentos finais (para o CONSULTOR) */
+    documentosConsultor: `${consultor}, tudo bem?\n\nPassando para te atualizar sobre o lead ${nomeCompleto}:\n\n✅ Documentos finais enviados ao cliente;\n✅ Registro atualizado no Salesforce;\n✅ Processo comercial concluído.\n\nBora pra cima!`,
 
     /** Boas-vindas (para CLIENTE ao Criar Lead) */
     boasVindas: `Olá ${cliente}! Seja muito bem-vindo ao ecossistema Portfel. É uma honra ter você conosco. Agora você conta com um acompanhamento contínuo para garantir que sua blindagem financeira esteja sempre atualizada. Conte comigo!`,
@@ -381,7 +405,7 @@ export const getCadenceFlow = (lead: Lead) => {
       { day: 0, title: 'Exigência', action: 'Solicitar Docs (Cliente)', msg: snippets.pendenciaDocs }
     ],
     'Ganho': [
-      { day: 0, title: 'Emissão', action: 'Enviar Apólice (Cliente)', msg: snippets.ganho }
+      { day: 0, title: 'Conclusão', action: 'Enviar Documentos (Cliente)', msg: snippets.ganho }
     ]
   };
 
@@ -403,7 +427,7 @@ export const getCadenceFlow = (lead: Lead) => {
 
 export const exportLeadToSheet = (lead: Lead) => ({
   'Carimbo de data/hora': lead.criadoEm, 'Status CRM': lead.status, 'Consultor Financeiro Responsável': lead.consultor,
-  'Salesforce URL': lead.salesforceUrl, 'Celular': lead.celular, 'CPF': lead.cpf, 'E-mail': lead.email,
+  'Salesforce URL': lead.salesforceUrl, 'Celular': lead.celular, 'E-mail': lead.email,
   'Nome do Cliente': lead.nome, 'Profissão exercida atualmente': lead.profissao, 'Data de nascimento': lead.nascimento,
   'Altura': lead.altura, 'Peso': lead.peso, 'Sexo': lead.sexo, 'Estado Civil': lead.estadoCivil,
   'Remuneração': lead.renda, 'Tipo de renda': lead.tipoRenda, 'Despesa Mensal': lead.despesas, 'Custos Educacionais': lead.educacaoFilhos,

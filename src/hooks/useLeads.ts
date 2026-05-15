@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Lead, Consultor } from '../types';
 import * as leadService from '../services/leadService';
+import { getDaysInStage } from '../utils/helpers';
 
 export function useLeads() {
     const [leads, setLeads] = useState<Lead[]>([]);
@@ -15,32 +16,7 @@ export function useLeads() {
         setIsFetching(true);
 
         try {
-            const data = await leadService.getLeads();
-            const formatted: Lead[] = (data || []).map((l: any) => ({
-                ...l,
-                id: Number(l.id),
-                // TRADUÇÃO: Banco de Dados -> Frontend
-                // O PostgreSQL converte nomes não-quotados para lowercase
-                // então temos fallbacks para ambos os formatos
-                nome:               l.nomecliente       || l.nome               || '',
-                estadoCivil:        l.estadoCivil       || l.estadocivil        || '',
-                tipoRenda:          l.tipoRenda         || l.tiporenda          || '',
-                pilarFinanceiro:    l.pilarFinanceiro   || l.pilarfinanceiro    || '',
-                problemasSaude:     l.problemasSaude    || l.problemassaude     || '',
-                necessidadeSeguro:  l.necessidadeSeguro || l.necessidadeseguro  || '',
-                infosRelevantes:    l.infosRelevantes   || l.infosrelevantes    || '',
-                possuiSeguro:       l.possuiSeguro      ?? l.possuiseguro       ?? false,
-                quantosFilhos:      l.quantosFilhos     ?? l.quantosfilhos      ?? null,
-                educacaoFilhos:     l.educacaoFilhos    ?? l.educacaofilhos     ?? null,
-                salesforceUrl:      l.salesforceUrl     || l.salesforceurl      || '',
-                motivoPerda:        l.motivoPerda       || l.motivoperda        || '',
-                criadoEm:           l.criadoEm          || l.criadoem           || '',
-                dataAcao:           l.dataAcao          || l.dataacao           || '',
-                percentualRenda:    l.percentualRenda   ?? l.percentualrenda    ?? null,
-                dataUltimoStatus:   l.dataUltimoStatus  || l.data_ultimo_status || '',
-                historico: typeof l.historico === 'string' ? JSON.parse(l.historico) : (l.historico || []),
-                reunioes:  typeof l.reunioes  === 'string' ? JSON.parse(l.reunioes)  : (l.reunioes  || [])
-            }));
+            const formatted = await leadService.getLeads();
 
             const sorted = formatted.sort((a, b) => {
                 const ordemStatus = [
@@ -58,8 +34,8 @@ export function useLeads() {
                     return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
                 }
 
-                const slaA = Number(a.sla) || 0;
-                const slaB = Number(b.sla) || 0;
+                const slaA = getDaysInStage(a);
+                const slaB = getDaysInStage(b);
                 return slaB - slaA;
             });
 
@@ -80,8 +56,11 @@ export function useLeads() {
         const oldLeads = [...leads]; // Backup para rollback (Optimistic UI)
         const now = new Date();
         const nowBr = now.toLocaleString('pt-BR');
-        // Formato que getDaysInStage sabe parsear (procura " → " e "em DD/MM/AAAA")
+        const nowDateBr = now.toLocaleDateString('pt-BR');
+        const slaTag = `[SLA] Contador reiniciado automaticamente em ${nowDateBr}, 00:00:00`;
+        // Mantem historico humano e tag de SLA para persistir o reset apos refresh.
         const newHistorico = [
+            slaTag,
             `De "${lead.status}" → "${newStatus}" em ${nowBr}`,
             ...(lead.historico || [])
         ];
@@ -95,7 +74,7 @@ export function useLeads() {
         ));
 
         try {
-            // 2. Persiste no banco — inclui data_ultimo_status para reiniciar SLA
+            // 2. Persiste no banco — o reinicio do SLA fica gravado no historico
             await leadService.updateLeadStatus(lead.id, newStatus, newHistorico, todayIso);
         } catch (err) {
             // 3. Em caso de falha, reverte
