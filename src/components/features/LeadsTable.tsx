@@ -6,7 +6,7 @@ import StatusBadge from '../ui/StatusBadge';
 
 interface FilterState {
     status: string[];
-    acao: string;
+    acao: string[];
     nome: string;
     consultor: string;
     renda: string;
@@ -36,17 +36,19 @@ const glassDropdown = {
     boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
 } as React.CSSProperties;
 
-const glassInput = {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px',
-    color: '#e2e8f0',
-    outline: 'none',
-    width: '100%',
-    fontSize: '11px',
-    padding: '8px 12px',
-    fontFamily: 'inherit',
-} as React.CSSProperties;
+const ACTION_OPTIONS = [
+    'Agendado',
+    'Agendar',
+    'Aguardando Agendamento',
+    'Aguardando Documentação',
+    'Aguardando Informações',
+    'Aguardando Seguradora',
+    'Ajustando',
+    'Chamar Consultor',
+    'Concluído',
+    'Criar Lead',
+    'Trocando Mensagens',
+];
 
 const TableSkeleton = () => (
     <>
@@ -64,10 +66,56 @@ const TableSkeleton = () => (
     </>
 );
 
+const checkboxStyle = (checked: boolean): React.CSSProperties => ({
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: checked ? '#2563eb' : 'rgba(255,255,255,0.04)',
+    border: checked ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.16)',
+    boxShadow: checked ? '0 0 0 2px rgba(37,99,235,0.18)' : 'none',
+});
+
+function FilterMultiSelect({ options, selected, onToggle, onToggleAll, renderLabel }: {
+    options: string[];
+    selected: string[];
+    onToggle: (value: string) => void;
+    onToggleAll: (nextAll: boolean) => void;
+    renderLabel?: (value: string, checked: boolean) => React.ReactNode;
+}) {
+    const selectedCount = selected.length;
+    const total = options.length;
+    const all = total > 0 && selectedCount === total;
+    const partial = selectedCount > 0 && selectedCount < total;
+    const masterText = all ? 'Todos selecionados' : 'Selecionar todos';
+    return (
+        <div className="w-64">
+            <button type="button" onClick={(e) => { e.stopPropagation(); onToggleAll(!all); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={checkboxStyle(all || partial)}>{all ? <Check className="w-2.5 h-2.5 text-white" /> : partial ? <div className="w-2 h-[2px] rounded bg-white" /> : null}</div>
+                <span className="text-[11px] font-bold tracking-wide text-slate-100">{masterText}</span>
+                <span className="ml-auto text-[10px] font-semibold text-slate-400">{selectedCount} de {total}</span>
+            </button>
+            <div className="mt-1.5 max-h-64 overflow-y-auto custom-scrollbar">
+                {options.map((opt) => {
+                    const checked = selected.includes(opt);
+                    return (
+                        <button type="button" key={opt} onClick={(e) => { e.stopPropagation(); onToggle(opt); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors" style={{ background: checked ? 'rgba(37,99,235,0.10)' : 'transparent' }}>
+                            <div style={checkboxStyle(checked)}>{checked && <Check className="w-2.5 h-2.5 text-white" />}</div>
+                            {renderLabel ? renderLabel(opt, checked) : <span className="text-[11px] font-semibold" style={{ color: checked ? '#e2e8f0' : '#94a3b8' }}>{opt}</span>}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, isLoading = false, globalSearch, setSelectedLead, updateLeadStatus }: LeadsTableProps) {
     const [filters, setFilters] = useState<FilterState>({
         status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em AnÃƒÂ¡lise'],
-        acao: '',
+        acao: [],
         nome: '',
         consultor: '',
         renda: ''
@@ -90,7 +138,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, i
     const filteredLeads = useMemo(() => {
         let result = leads.filter(item => {
             if (filters.status.length > 0 && !filters.status.includes(item.status)) return false;
-            if (filters.acao && (item.acao || '') !== filters.acao) return false;
+            if (filters.acao.length > 0 && !filters.acao.includes((item.acao || '').trim())) return false;
             if (filters.nome && !(item.nome || '').toLowerCase().includes(filters.nome.toLowerCase())) return false;
             if (filters.consultor && !(item.consultor || '').toLowerCase().includes(filters.consultor.toLowerCase())) return false;
             if (filters.renda) {
@@ -160,6 +208,12 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, i
         setFilters(prev => ({
             ...prev,
             status: prev.status.includes(s) ? prev.status.filter(i => i !== s) : [...prev.status, s]
+        }));
+    };
+    const toggleAcaoFilter = (a: string) => {
+        setFilters(prev => ({
+            ...prev,
+            acao: prev.acao.includes(a) ? prev.acao.filter(i => i !== a) : [...prev.acao, a]
         }));
     };
 
@@ -304,10 +358,7 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, i
     const thCls = "px-5 py-4 border-b text-left" as const;
     const thStyle = { borderColor: 'rgba(255,255,255,0.05)' };
     const thLbl = { fontSize: '9px', fontWeight: 900, textTransform: 'uppercase' as const, letterSpacing: '0.15em', color: '#cbd5e1', cursor: 'pointer' };
-    const uniqueAcoes = useMemo(
-        () => Array.from(new Set(leads.map(l => (l.acao || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-        [leads]
-    );
+    const uniqueAcoes = useMemo(() => ACTION_OPTIONS.slice().sort((a, b) => a.localeCompare(b, 'pt-BR')), []);
     const formatMoneyNoCurrency = (v: number | string | null | undefined) => {
         if (v === null || v === undefined || v === '') return '--';
         const value = typeof v === 'string' ? Number(v.replace(/\D/g, '')) : Number(v);
@@ -456,19 +507,16 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, i
                                         <div className="relative filter-container">
                                             <button onClick={() => setShowStatusFilter(!showStatusFilter)} className="p-1.5 rounded-lg transition-all" style={{ background: filters.status.length > 0 ? 'rgba(37,99,235,0.15)' : 'transparent', color: filters.status.length > 0 ? '#60a5fa' : '#94a3b8', border: '1px solid transparent' }}><Filter size={13} /></button>
                                             {showStatusFilter && (
-                                                <div className="absolute top-full left-0 mt-2 w-52 z-[60] p-2 animate-in" style={glassDropdown}>
-                                                    {STAGES.map(s => (
-                                                        <div key={s} onClick={() => toggleStatusFilter(s)} className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-colors" style={{ background: filters.status.includes(s) ? 'rgba(37,99,235,0.08)' : 'transparent' }}>
-                                                            <div className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center" style={{ background: filters.status.includes(s) ? '#2563eb' : 'rgba(255,255,255,0.06)', border: filters.status.includes(s) ? '1px solid #2563eb' : '1px solid rgba(255,255,255,0.12)' }}>{filters.status.includes(s) && <Check className="w-2.5 h-2.5 text-white" />}</div>
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: filters.status.includes(s) ? '#f1f5f9' : '#94a3b8' }}>{s}</span>
-                                                        </div>
-                                                    ))}
-                                                    {filters.status.length > 0 && (
-                                                        <div className="flex gap-1.5 mt-1.5">
-                                                            <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: ['Lead', 'Planejamento', 'Fechamento', 'Follow-up', 'Em AnÃƒÂ¡lise'] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(37,99,235,0.08)', color: '#60a5fa', border: '1px solid rgba(37,99,235,0.15)' }}>SÃƒÂ³ Ativos</button>
-                                                            <button onClick={e => { e.stopPropagation(); setFilters(p => ({ ...p, status: [] })); }} className="flex-1 p-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors" style={{ background: 'rgba(100,116,139,0.08)', color: '#94a3b8', border: '1px solid rgba(100,116,139,0.15)' }}>Ver Todos</button>
-                                                        </div>
-                                                    )}
+                                                <div className="absolute top-full left-0 mt-2 z-[60] p-2 animate-in" style={glassDropdown}>
+                                                    <FilterMultiSelect
+                                                        options={STAGES}
+                                                        selected={filters.status}
+                                                        onToggle={toggleStatusFilter}
+                                                        onToggleAll={(nextAll) => setFilters(p => ({ ...p, status: nextAll ? [...STAGES] : [] }))}
+                                                        renderLabel={(s, checked) => (
+                                                            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: checked ? '#f1f5f9' : '#94a3b8' }}>{s}</span>
+                                                        )}
+                                                    />
                                                 </div>
                                             )}
                                         </div>
@@ -478,13 +526,15 @@ export const LeadsTable = React.memo(function LeadsTable({ leads, consultores, i
                                     <div className="flex items-center justify-between">
                                         <button onClick={() => handleSort('acao')} className="flex items-center hover:text-white transition-colors" style={thLbl}>AÇÃO <SortIcon col="acao" /></button>
                                         <div className="relative filter-container">
-                                            <button onClick={() => setShowAcaoFilter(!showAcaoFilter)} className="p-1.5 rounded-lg transition-all" style={{ color: filters.acao ? '#60a5fa' : '#94a3b8', background: filters.acao ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Filter size={13} /></button>
+                                            <button onClick={() => setShowAcaoFilter(!showAcaoFilter)} className="p-1.5 rounded-lg transition-all" style={{ color: filters.acao.length > 0 ? '#60a5fa' : '#94a3b8', background: filters.acao.length > 0 ? 'rgba(37,99,235,0.10)' : 'transparent', border: '1px solid transparent' }}><Filter size={13} /></button>
                                             {showAcaoFilter && (
-                                                <div className="absolute top-full right-0 mt-2 w-56 z-[60] p-3" style={glassDropdown}>
-                                                    <select autoFocus style={glassInput} value={filters.acao} onChange={e => setFilters({ ...filters, acao: e.target.value })}>
-                                                        <option value="">Todas as ações</option>
-                                                        {uniqueAcoes.map(a => <option key={a} value={a}>{a}</option>)}
-                                                    </select>
+                                                <div className="absolute top-full right-0 mt-2 z-[60] p-2" style={glassDropdown}>
+                                                    <FilterMultiSelect
+                                                        options={uniqueAcoes as string[]}
+                                                        selected={filters.acao}
+                                                        onToggle={toggleAcaoFilter}
+                                                        onToggleAll={(nextAll) => setFilters(p => ({ ...p, acao: nextAll ? [...uniqueAcoes] : [] }))}
+                                                    />
                                                 </div>
                                             )}
                                         </div>
